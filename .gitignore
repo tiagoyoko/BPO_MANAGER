@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+
+# Env (root level)
+.env
+.env*.local
+
+# IDE / editor
+.idea
+*.swp
+*.swo
+
+# App build / deps (backup for subdirs)
+bpo360-app/node_modules
+bpo360-app/.next
