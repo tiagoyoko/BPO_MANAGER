@@ -1,16 +1,20 @@
 -- Story 1.5: Configurar ERP principal por cliente
 -- Tabela integracoes_erp com isolamento por bpo_id, RLS e suporte a múltiplos ERPs futuros.
--- Story 1.6 adicionará token_hash ou tabela separada para dados sensíveis F360.
+-- Story 1.6: colunas de token F360 já incluídas (nullable) para consistência com o repositório.
 
 CREATE TABLE public.integracoes_erp (
-  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  bpo_id       UUID        NOT NULL REFERENCES public.bpos(id) ON DELETE CASCADE,
-  cliente_id   UUID        NOT NULL REFERENCES public.clientes(id) ON DELETE CASCADE,
-  tipo_erp     TEXT        NOT NULL,
-  e_principal  BOOLEAN     NOT NULL DEFAULT true,
-  ativo        BOOLEAN     NOT NULL DEFAULT true,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  bpo_id               UUID        NOT NULL REFERENCES public.bpos(id) ON DELETE CASCADE,
+  cliente_id           UUID        NOT NULL REFERENCES public.clientes(id) ON DELETE CASCADE,
+  tipo_erp             TEXT        NOT NULL,
+  e_principal          BOOLEAN     NOT NULL DEFAULT true,
+  ativo                BOOLEAN     NOT NULL DEFAULT true,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Story 1.6: token F360 criptografado (AES-256-GCM) e metadados de configuração
+  token_f360_encrypted TEXT        NULL,
+  observacoes          TEXT        NULL,
+  token_configurado_em TIMESTAMPTZ NULL,
   CONSTRAINT integracoes_erp_unique_per_cliente_tipo UNIQUE (cliente_id, tipo_erp),
   CONSTRAINT integracoes_erp_tipo_valido CHECK (tipo_erp IN ('F360'))
 );

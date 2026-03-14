@@ -197,14 +197,26 @@ describe("PUT /api/clientes/[clienteId]/erp/f360", () => {
 
   it("retorna 400 quando token vazio", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
-    const maybeSingle = vi.fn().mockResolvedValue({ data: CLIENTE_ROW, error: null });
-    const from = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ maybeSingle }),
+    const maybeSingleCliente = vi.fn().mockResolvedValue({ data: CLIENTE_ROW, error: null });
+    const f360Row = { ...F360_ROW, token_f360_encrypted: null, observacoes: null, token_configurado_em: null };
+    const maybeSingleF360 = vi.fn().mockResolvedValue({ data: f360Row, error: null });
+    const from = vi.fn()
+      .mockReturnValueOnce({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleCliente }),
+          }),
         }),
-      }),
-    });
+      })
+      .mockReturnValueOnce({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleF360 }),
+            }),
+          }),
+        }),
+      });
     vi.mocked(createClient).mockResolvedValue({ from } as never);
 
     const res = await PUT(
@@ -223,6 +235,7 @@ describe("PUT /api/clientes/[clienteId]/erp/f360", () => {
   it("retorna 404 quando ERP F360 não configurado (story 1.5)", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
     const maybeSingleCliente = vi.fn().mockResolvedValue({ data: CLIENTE_ROW, error: null });
+    const maybeSingleF360Null = vi.fn().mockResolvedValue({ data: null, error: null });
     const from = vi.fn()
       .mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
@@ -232,11 +245,10 @@ describe("PUT /api/clientes/[clienteId]/erp/f360", () => {
         }),
       })
       .mockReturnValueOnce({
-        from: "integracoes_erp",
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) }),
+              eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleF360Null }),
             }),
           }),
         }),

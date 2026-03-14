@@ -1,6 +1,6 @@
 # Story 1.6: Configurar parâmetros básicos de integração F360 (sem API)
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -36,43 +36,43 @@ so that **a integração completa possa ser ativada depois (EP4)**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 (AC: 1,2,3)** – Migration: adicionar colunas de configuração F360 à `integracoes_erp`
-  - [ ] Criar `bpo360-app/supabase/migrations/20260314010000_add_f360_config_to_integracoes_erp.sql`
-  - [ ] `ALTER TABLE public.integracoes_erp ADD COLUMN token_f360_encrypted TEXT NULL`
-  - [ ] `ALTER TABLE public.integracoes_erp ADD COLUMN observacoes TEXT NULL`
-  - [ ] `ALTER TABLE public.integracoes_erp ADD COLUMN token_configurado_em TIMESTAMPTZ NULL` — registra quando o token foi salvo/atualizado pela última vez (para exibição de "última alteração" na story 1.7)
-  - [ ] Nenhuma migração de dados necessária (novas colunas nullable)
+- [x] **Task 1 (AC: 1,2,3)** – Migration: adicionar colunas de configuração F360 à `integracoes_erp`
+  - [x] Criar `bpo360-app/supabase/migrations/20260314010000_add_f360_config_to_integracoes_erp.sql`
+  - [x] `ALTER TABLE public.integracoes_erp ADD COLUMN token_f360_encrypted TEXT NULL`
+  - [x] `ALTER TABLE public.integracoes_erp ADD COLUMN observacoes TEXT NULL`
+  - [x] `ALTER TABLE public.integracoes_erp ADD COLUMN token_configurado_em TIMESTAMPTZ NULL` — registra quando o token foi salvo/atualizado pela última vez (para exibição de "última alteração" na story 1.7)
+  - [x] Nenhuma migração de dados necessária (novas colunas nullable)
 
-- [ ] **Task 2 (AC: 1,7)** – Utilitário de criptografia de aplicação
-  - [ ] Criar `bpo360-app/src/lib/security/crypto.ts` usando Node.js `node:crypto` nativo (AES-256-GCM)
-  - [ ] Funções exportadas: `encrypt(plaintext: string): string` e `decrypt(ciphertext: string): string`
-  - [ ] Formato de armazenamento: string hex `iv:authTag:encryptedData` (separado por `:`)
-  - [ ] Chave lida de `process.env.TOKEN_ENCRYPTION_KEY` (64 hex chars = 32 bytes). Lançar erro descritivo se não configurada.
-  - [ ] **NUNCA logar** o plaintext ou derivados — somente erro genérico em caso de falha
-  - [ ] Criar `bpo360-app/src/lib/security/crypto.test.ts` com testes: encrypt → decrypt roundtrip; ciphertext é diferente do plaintext; ciphertexts do mesmo valor são diferentes (IV aleatório); erro sem env var
-  - [ ] Adicionar ao `.env.example`:
+- [x] **Task 2 (AC: 1,7)** – Utilitário de criptografia de aplicação
+  - [x] Criar `bpo360-app/src/lib/security/crypto.ts` usando Node.js `node:crypto` nativo (AES-256-GCM)
+  - [x] Funções exportadas: `encrypt(plaintext: string): string` e `decrypt(ciphertext: string): string`
+  - [x] Formato de armazenamento: string hex `iv:authTag:encryptedData` (separado por `:`)
+  - [x] Chave lida de `process.env.TOKEN_ENCRYPTION_KEY` (64 hex chars = 32 bytes). Lançar erro descritivo se não configurada.
+  - [x] **NUNCA logar** o plaintext ou derivados — somente erro genérico em caso de falha
+  - [x] Criar `bpo360-app/src/lib/security/crypto.test.ts` com testes: encrypt → decrypt roundtrip; ciphertext é diferente do plaintext; ciphertexts do mesmo valor são diferentes (IV aleatório); erro sem env var
+  - [x] Adicionar ao `.env.example`:
     ```
     # Chave de criptografia para tokens F360 (32 bytes como 64 hex chars). Gerar com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
     TOKEN_ENCRYPTION_KEY=your-32-byte-hex-key
     ```
 
-- [ ] **Task 3 (AC: 1,2,3,5,6)** – Repositório: atualizar tipos e adicionar funções F360
-  - [ ] Atualizar `bpo360-app/src/lib/domain/integracoes-erp/types.ts`:
+- [x] **Task 3 (AC: 1,2,3,5,6)** – Repositório: atualizar tipos e adicionar funções F360
+  - [x] Atualizar `bpo360-app/src/lib/domain/integracoes-erp/types.ts`:
     - Adicionar em `IntegracaoErpRow`: `token_f360_encrypted: string | null`, `observacoes: string | null`, `token_configurado_em: string | null`
     - Adicionar em `IntegracaoErp`: `tokenConfigurado: boolean` (derivado de `token_f360_encrypted !== null`), `tokenMascarado: string | null` (ex.: `"••••abcd"` — calculado na camada de domínio), `observacoes: string | null`, `tokenConfiguradoEm: string | null`
     - Adicionar `ConfigF360Input`: `{ token: string; observacoes?: string | null }`
     - **Nunca adicionar `tokenPlaintext` ou similar nos tipos de domínio**
-  - [ ] Atualizar `rowToIntegracaoErp` para mapear novas colunas e gerar `tokenMascarado` (sem descriptografar aqui — só mascarar o que já existe via presença de `token_f360_encrypted`)
-  - [ ] Adicionar em `repository.ts`: função `atualizarConfigF360(supabase, integracaoId, bpoId, tokenEncrypted, observacoes)` → retorna `IntegracaoErp`
+  - [x] Atualizar `rowToIntegracaoErp` para mapear novas colunas e gerar `tokenMascarado` (sem descriptografar aqui — só mascarar o que já existe via presença de `token_f360_encrypted`)
+  - [x] Adicionar em `repository.ts`: função `atualizarConfigF360(supabase, integracaoId, bpoId, tokenEncrypted, observacoes)` → retorna `IntegracaoErp`
 
-- [ ] **Task 4 (AC: 1,2,3,5,6,7)** – API: `GET` e `PUT /api/clientes/[clienteId]/erp/f360`
-  - [ ] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.ts`
-  - [ ] **GET**: retorna configuração F360 mascarada do cliente.
+- [x] **Task 4 (AC: 1,2,3,5,6,7)** – API: `GET` e `PUT /api/clientes/[clienteId]/erp/f360`
+  - [x] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.ts`
+  - [x] **GET**: retorna configuração F360 mascarada do cliente.
     - Guard: qualquer papel exceto `cliente_final` (403)
     - Busca `integracoes_erp` WHERE `cliente_id = clienteId AND tipo_erp = 'F360'`
     - Se não existe: `{ data: null, error: { code: "NOT_FOUND", message: "Integração F360 não configurada." } }` HTTP 404
     - Retorna: `{ data: { id, tipoErp, ativo, tokenConfigurado, tokenMascarado, observacoes, tokenConfiguradoEm }, error: null }` — **nunca incluir o campo encrypted no JSON de resposta**
-  - [ ] **PUT**: salva/atualiza token F360 (operação idempotente).
+  - [x] **PUT**: salva/atualiza token F360 (operação idempotente).
     - Guard: apenas `admin_bpo` e `gestor_bpo`
     - Ownership check via `buscarClientePorIdEBpo`
     - Verifica que existe `IntegracaoErp` do tipo F360 (pré-requisito da story 1.5)
@@ -82,12 +82,12 @@ so that **a integração completa possa ser ativada depois (EP4)**.
     - Atualiza: `token_f360_encrypted`, `observacoes`, `token_configurado_em = now()`
     - Resposta sucesso: `{ data: { integracao: IntegracaoErp (mascarada) }, error: null }` HTTP 200
     - Em erro de criptografia: log erro no servidor (sem o token), retornar `{ data: null, error: { code: "CRYPTO_ERROR", message: "Erro ao salvar configuração." } }` HTTP 500
-  - [ ] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.test.ts`:
+  - [x] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.test.ts`:
     - GET sem auth → 401; com `cliente_final` → 403; sem F360 configurado → 404; com F360 configurado → 200 (nunca expõe `token_f360_encrypted` no body)
     - PUT sem auth → 401; com `operador_bpo` → 403; body inválido (token vazio) → 400; sem ERP F360 da story 1.5 → 404; sucesso → 200 com token mascarado
 
-- [ ] **Task 5 (AC: 1,2,3,4,5,6)** – UI: formulário de configuração do token F360
-  - [ ] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/f360-token-form.tsx` (Client Component)
+- [x] **Task 5 (AC: 1,2,3,4,5,6)** – UI: formulário de configuração do token F360
+  - [x] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/f360-token-form.tsx` (Client Component)
     - Props: `integracaoId: string`, `clienteId: string`, `userRole: string`, `tokenConfigurado: boolean`, `tokenMascarado: string | null`, `observacoes: string | null`
     - Estados: `isSubmittingF360` (bool), `erroF360` (string | null), `modoEdicao` (bool — alterna entre display mascarado e campo de entrada)
     - Modo display (quando `tokenConfigurado && !modoEdicao`):
@@ -103,14 +103,14 @@ so that **a integração completa possa ser ativada depois (EP4)**.
       - Se `operador_bpo`: renderizar somente modo display (sem botão Alterar)
     - Status banner após salvar: "Configuração básica salva – integração técnica pendente"
     - Feedback de erro: usar componentes de `src/components/feedback/`
-  - [ ] Atualizar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx` (criado na story 1.5):
+  - [x] Atualizar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx` (criado na story 1.5):
     - Carregar configuração F360 via `GET /api/clientes/[clienteId]/erp/f360` (ou direto via repositório no servidor)
     - Renderizar `<F360TokenForm ... />` abaixo do `<ErpConfigClient ... />` somente se houver `IntegracaoErp` do tipo F360
     - Se não houver: renderizar aviso "Configure o ERP F360 na seção acima para liberar esta etapa"
 
-- [ ] **Task 6** – Testes de componente
-  - [ ] `f360-token-form.test.tsx`: modo display mascarado; toggle para edição; validação token vazio; submit com sucesso; tratamento de erro; modo readonly para `operador_bpo`
-  - [ ] Regressões: suite completa anterior continua passando
+- [x] **Task 6** – Testes de componente
+  - [x] `f360-token-form.test.tsx`: modo display mascarado; toggle para edição; validação token vazio; submit com sucesso; tratamento de erro; modo readonly para `operador_bpo`
+  - [x] Regressões: suite completa anterior continua passando
 
 ## Dev Notes
 
@@ -355,4 +355,31 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- Migration `20260314010000_add_f360_config_to_integracoes_erp.sql`: colunas `token_f360_encrypted`, `observacoes`, `token_configurado_em`.
+- `crypto.ts` (AES-256-GCM) + `crypto.test.ts` (6 testes); `.env.example` com `TOKEN_ENCRYPTION_KEY`.
+- Tipos e repositório: `IntegracaoErpRow`/`IntegracaoErp` com campos F360; `buscarIntegracaoF360`, `atualizarConfigF360`; `rowToIntegracaoErp` com `tokenMascarado` ("••••••••"); `ConfigF360Input`.
+- API GET/PUT `/api/clientes/[clienteId]/erp/f360`: GET retorna token mascarado (últimos 4 via decrypt server-side); PUT criptografa e persiste; nunca expõe token em JSON; 9 testes em `route.test.ts`.
+- `F360TokenForm`: display mascarado, toggle edição, validação token vazio, FeedbackToast; página config renderiza form só quando F360 existe, senão CTA "Configure o ERP F360 na seção acima". 8 testes em `f360-token-form.test.tsx`.
+- Regressão: 112 testes passando (erp-config-client e integracoes-erp/repository atualizados para novos campos).
+- 2026-03-14 (action items): Nenhum Review Follow-up pendente. DoD revalidado — 112/112 testes; sprint-status 1-6 → review.
+
 ### File List
+
+- bpo360-app/supabase/migrations/20260314010000_add_f360_config_to_integracoes_erp.sql
+- bpo360-app/.env.example
+- bpo360-app/src/lib/security/crypto.ts
+- bpo360-app/src/lib/security/crypto.test.ts
+- bpo360-app/src/lib/domain/integracoes-erp/types.ts
+- bpo360-app/src/lib/domain/integracoes-erp/repository.ts
+- bpo360-app/src/lib/domain/integracoes-erp/repository.test.ts
+- bpo360-app/src/app/api/clientes/[clienteId]/erp/route.test.ts
+- bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.ts
+- bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.test.ts
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/f360-token-form.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/f360-token-form.test.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/erp-config-client.test.tsx
+
+### Change Log
+
+- 2026-03-14: Story 1.6 implementada (migração F360, crypto, tipos/repo, API f360, F360TokenForm, testes). Status → review.
