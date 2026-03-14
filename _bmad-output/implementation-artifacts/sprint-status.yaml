@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 1-6 action items: DoD validado, testes 112/112, status → review
+last_updated: "2026-03-14"  # 1-7 code review concluído, status → done
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -49,7 +49,7 @@ development_status:
   1-4-listar-e-filtrar-clientes: done
   1-5-configurar-erp-principal-f360-por-cliente: done
   1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: review
-  1-7-ver-status-de-configuracao-erp-por-cliente: ready-for-dev
+  1-7-ver-status-de-configuracao-erp-por-cliente: done
   epic-1-retrospective: optional
 
   epic-2: backlog

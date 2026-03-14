@@ -28,6 +28,7 @@ describe("ClientesFiltros", () => {
       status: "",
       tags: [],
       responsavelInternoId: "",
+      erpStatus: "",
     });
   });
 
@@ -53,7 +54,7 @@ describe("ClientesFiltros", () => {
     render(<ClientesFiltros {...defaultProps} />);
     defaultProps.onFiltrosChange.mockClear();
 
-    const statusSelect = screen.getByLabelText(/Filtrar por status/i);
+    const statusSelect = screen.getByLabelText("Filtrar por status");
     fireEvent.change(statusSelect, { target: { value: "Pausado" } });
     const limparBtn = screen.getByRole("button", { name: /Limpar filtros/i });
     expect(limparBtn).toBeDefined();
@@ -62,15 +63,45 @@ describe("ClientesFiltros", () => {
     expect((statusSelect as HTMLSelectElement).value).toBe("");
   });
 
+  it("Limpar filtros reseta erpStatus e onFiltrosChange recebe erpStatus vazio", () => {
+    render(<ClientesFiltros {...defaultProps} />);
+    defaultProps.onFiltrosChange.mockClear();
+
+    fireEvent.change(screen.getByLabelText(/Filtrar por status ERP/i), {
+      target: { value: "config_basica_salva" },
+    });
+    expect(defaultProps.onFiltrosChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ erpStatus: "config_basica_salva" })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Limpar filtros/i }));
+    expect(defaultProps.onFiltrosChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ erpStatus: "" })
+    );
+    expect((screen.getByLabelText(/Filtrar por status ERP/i) as HTMLSelectElement).value).toBe("");
+  });
+
   it("callback onFiltrosChange é chamado ao mudar status", () => {
     render(<ClientesFiltros {...defaultProps} />);
     defaultProps.onFiltrosChange.mockClear();
 
-    fireEvent.change(screen.getByLabelText(/Filtrar por status/i), {
+    fireEvent.change(screen.getByLabelText("Filtrar por status"), {
       target: { value: "Ativo" },
     });
     expect(defaultProps.onFiltrosChange).toHaveBeenCalledWith(
       expect.objectContaining({ status: "Ativo" })
+    );
+  });
+
+  it("select de status ERP aparece e onFiltrosChange inclui erpStatus ao selecionar", () => {
+    render(<ClientesFiltros {...defaultProps} />);
+    defaultProps.onFiltrosChange.mockClear();
+
+    fireEvent.change(screen.getByLabelText(/Filtrar por status ERP/i), {
+      target: { value: "integracao_ativa" },
+    });
+    expect(defaultProps.onFiltrosChange).toHaveBeenCalledWith(
+      expect.objectContaining({ erpStatus: "integracao_ativa" })
     );
   });
 

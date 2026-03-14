@@ -11,6 +11,8 @@ import {
   buscarUsuarioPorIdEBpo,
 } from "@/lib/domain/clientes/repository";
 import type { Cliente, ClienteRow, NovoClienteInput } from "@/lib/domain/clientes/types";
+import { computarErpDetalhes, computarErpStatus } from "@/lib/domain/clientes/erp-status";
+import type { ErpStatusCliente } from "@/lib/domain/clientes/types";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,18 +46,71 @@ export async function GET(request: NextRequest) {
     ? tagsParam.split(",").map((t) => t.trim()).filter(Boolean)
     : [];
   const responsavelInternoId = (searchParams.get("responsavelInternoId") ?? "").trim();
+  const erpStatusParam = (searchParams.get("erpStatus") ?? "").trim();
+  const erpStatus: ErpStatusCliente | "" =
+    erpStatusParam === "nao_configurado" ||
+    erpStatusParam === "config_basica_salva" ||
+    erpStatusParam === "integracao_ativa"
+      ? erpStatusParam
+      : "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   const offset = (page - 1) * limit;
 
   const supabase = await createClient();
+
+  // Filtro por erpStatus: subquery em integracoes_erp para obter cliente_ids (Story 1.7)
+  let clienteIdsFiltro: string[] | null = null;
+  if (erpStatus === "nao_configurado") {
+    const { data: comErp } = await supabase
+      .from("integracoes_erp")
+      .select("cliente_id")
+      .eq("bpo_id", user.bpoId);
+    const idsComErp = (comErp ?? []).map((r: { cliente_id: string }) => r.cliente_id);
+    clienteIdsFiltro = idsComErp;
+  } else if (erpStatus === "config_basica_salva") {
+    const [{ data: comAtivo }, { data: comBasica }] = await Promise.all([
+      supabase
+        .from("integracoes_erp")
+        .select("cliente_id")
+        .eq("bpo_id", user.bpoId)
+        .eq("ativo", true),
+      supabase
+        .from("integracoes_erp")
+        .select("cliente_id")
+        .eq("bpo_id", user.bpoId)
+        .eq("ativo", false),
+    ]);
+    const idsComAtivo = new Set((comAtivo ?? []).map((r: { cliente_id: string }) => r.cliente_id));
+    clienteIdsFiltro = (comBasica ?? [])
+      .map((r: { cliente_id: string }) => r.cliente_id)
+      .filter((id) => !idsComAtivo.has(id));
+  } else if (erpStatus === "integracao_ativa") {
+    const { data: ativos } = await supabase
+      .from("integracoes_erp")
+      .select("cliente_id")
+      .eq("bpo_id", user.bpoId)
+      .eq("ativo", true);
+    clienteIdsFiltro = (ativos ?? []).map((r: { cliente_id: string }) => r.cliente_id);
+  }
+
   let query = supabase
     .from("clientes")
     .select(
-      "id, bpo_id, cnpj, razao_social, nome_fantasia, email, telefone, responsavel_interno_id, receita_estimada, status, tags, created_at, updated_at",
+      "id, bpo_id, cnpj, razao_social, nome_fantasia, email, telefone, responsavel_interno_id, receita_estimada, status, tags, created_at, updated_at, integracoes_erp(id, tipo_erp, ativo, token_configurado_em)",
       { count: "exact" }
     )
     .eq("bpo_id", user.bpoId);
+
+  if (erpStatus === "nao_configurado" && clienteIdsFiltro.length > 0) {
+    query = query.not("id", "in", `(${clienteIdsFiltro.join(",")})`);
+  } else if (erpStatus === "nao_configurado" && clienteIdsFiltro.length === 0) {
+    // Nenhum cliente tem ERP: não restringir por id (todos sem ERP)
+  } else if ((erpStatus === "config_basica_salva" || erpStatus === "integracao_ativa") && clienteIdsFiltro.length === 0) {
+    query = query.eq("id", "00000000-0000-0000-0000-000000000000"); // lista vazia
+  } else if ((erpStatus === "config_basica_salva" || erpStatus === "integracao_ativa") && clienteIdsFiltro.length > 0) {
+    query = query.in("id", clienteIdsFiltro);
+  }
 
   if (search) {
     const term = `%${search}%`;
@@ -78,7 +133,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientes = (data ?? []).map(rowToCliente);
+  const clientes = (data ?? []).map(rowToClienteComErp);
   return NextResponse.json({
     data: { clientes, total: count ?? 0, page, limit },
     error: null,
@@ -237,6 +292,17 @@ export async function POST(request: NextRequest) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+type IntegracaoErpJoinRow = {
+  id?: string;
+  tipo_erp: string;
+  ativo: boolean;
+  token_configurado_em: string | null;
+};
+
+type ClienteRowComErp = ClienteRow & {
+  integracoes_erp?: IntegracaoErpJoinRow[] | null;
+};
+
 function rowToCliente(row: ClienteRow): Cliente {
   return {
     id: row.id,
@@ -252,5 +318,14 @@ function rowToCliente(row: ClienteRow): Cliente {
     tags: Array.isArray(row.tags) ? row.tags : [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function rowToClienteComErp(row: ClienteRowComErp): Cliente {
+  const integracoes = Array.isArray(row.integracoes_erp) ? row.integracoes_erp : [];
+  return {
+    ...rowToCliente(row),
+    erpStatus: computarErpStatus(integracoes),
+    erpDetalhes: computarErpDetalhes(integracoes),
   };
 }

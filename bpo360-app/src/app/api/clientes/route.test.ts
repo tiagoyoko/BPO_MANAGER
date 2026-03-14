@@ -220,6 +220,197 @@ describe("GET /api/clientes", () => {
     expect(json.data.total).toBe(10);
     expect(rangeFn).toHaveBeenCalledWith(5, 9);
   });
+
+  it("GET sem filtro ERP retorna cada cliente com erpStatus e erpDetalhes", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const rowSemErp = { ...CLIENTE_ROW, integracoes_erp: [] };
+    const rowComErpBasico = {
+      ...CLIENTE_ROW,
+      id: "cliente-2",
+      nome_fantasia: "Outra Empresa",
+      razao_social: "Outra Ltda",
+      integracoes_erp: [{ id: "erp-1", tipo_erp: "F360", ativo: false, token_configurado_em: "2026-03-14T12:00:00Z" }],
+    };
+    const rangeFn = vi.fn().mockResolvedValue({
+      data: [rowSemErp, rowComErpBasico],
+      error: null,
+      count: 2,
+    });
+    const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+    const eqFn = vi.fn().mockReturnValue({ order: orderFn });
+    const supabaseMock = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "clientes") {
+          return {
+            select: vi.fn().mockReturnValue({ eq: eqFn }),
+          };
+        }
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [], error: null }) }) };
+      }),
+    };
+    vi.mocked(createClient).mockResolvedValue(
+      supabaseMock as unknown as Awaited<ReturnType<typeof createClient>>
+    );
+
+    const res = await GET(reqGet());
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.clientes).toHaveLength(2);
+    expect(json.data.clientes[0].erpStatus).toBe("nao_configurado");
+    expect(json.data.clientes[0].erpDetalhes).toBeNull();
+    expect(json.data.clientes[1].erpStatus).toBe("config_basica_salva");
+    expect(json.data.clientes[1].erpDetalhes).toEqual({ tipoErp: "F360", ultimaAlteracao: "2026-03-14T12:00:00Z" });
+  });
+
+  it("GET com erpStatus=nao_configurado filtra somente clientes sem ERP", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const fromMock = vi.fn().mockImplementation((table: string) => {
+      if (table === "integracoes_erp") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ cliente_id: "outro-id" }], error: null }),
+          }),
+        };
+      }
+      const rangeFn = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 });
+      const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+      const notInFn = vi.fn().mockReturnValue({ order: orderFn });
+      return {
+        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ not: notInFn }) }),
+      };
+    });
+    vi.mocked(createClient).mockResolvedValue(
+      { from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>
+    );
+
+    const res = await GET(reqGet("http://localhost/api/clientes?erpStatus=nao_configurado"));
+
+    expect(res.status).toBe(200);
+    expect(fromMock).toHaveBeenCalledWith("integracoes_erp");
+  });
+
+  it("GET com erpStatus=config_basica_salva filtra somente clientes com ERP e ativo=false (exclui quem tem ativo=true)", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const fromMock = vi.fn().mockImplementation((table: string) => {
+      if (table === "integracoes_erp") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockImplementation((ativo: boolean) =>
+                Promise.resolve({
+                  data: ativo
+                    ? [{ cliente_id: "cliente-com-ativo" }]
+                    : [
+                        { cliente_id: "cliente-basica-1" },
+                        { cliente_id: "cliente-basica-2" },
+                      ],
+                  error: null,
+                })
+              ),
+            }),
+          }),
+        };
+      }
+      const rangeFn = vi.fn().mockResolvedValue({
+        data: [
+          { ...CLIENTE_ROW, id: "cliente-basica-1", nome_fantasia: "Só config", integracoes_erp: [{ tipo_erp: "F360", ativo: false, token_configurado_em: null }] },
+        ],
+        error: null,
+        count: 1,
+      });
+      const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+      const inFn = vi.fn().mockReturnValue({ order: orderFn });
+      const eqEmptyFn = vi.fn().mockReturnValue({ order: orderFn });
+      const clientesChain = { in: inFn, eq: eqEmptyFn };
+      return {
+        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue(clientesChain) }),
+      };
+    });
+    vi.mocked(createClient).mockResolvedValue(
+      { from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>
+    );
+
+    const res = await GET(reqGet("http://localhost/api/clientes?erpStatus=config_basica_salva"));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.clientes).toHaveLength(1);
+    expect(json.data.clientes[0].erpStatus).toBe("config_basica_salva");
+    expect(json.data.clientes[0].id).toBe("cliente-basica-1");
+  });
+
+  it("GET com erpStatus=integracao_ativa filtra somente clientes com ativo=true", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const fromMock = vi.fn().mockImplementation((table: string) => {
+      if (table === "integracoes_erp") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [{ cliente_id: "cliente-1" }], error: null }),
+            }),
+          }),
+        };
+      }
+      const rangeFn = vi.fn().mockResolvedValue({
+        data: [{ ...CLIENTE_ROW, integracoes_erp: [{ tipo_erp: "F360", ativo: true, token_configurado_em: null }] }],
+        error: null,
+        count: 1,
+      });
+      const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+      const eqFiltroVazioFn = vi.fn().mockReturnValue({ order: orderFn });
+      const inFn = vi.fn().mockReturnValue({ order: orderFn });
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: eqFiltroVazioFn,
+            in: inFn,
+          }),
+        }),
+      };
+    });
+    vi.mocked(createClient).mockResolvedValue(
+      { from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>
+    );
+
+    const res = await GET(reqGet("http://localhost/api/clientes?erpStatus=integracao_ativa"));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.clientes).toHaveLength(1);
+    expect(json.data.clientes[0].erpStatus).toBe("integracao_ativa");
+  });
+
+  it("resposta GET nunca inclui token_f360_encrypted no payload", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const rowComErp = {
+      ...CLIENTE_ROW,
+      integracoes_erp: [{ tipo_erp: "F360", ativo: false, token_configurado_em: null }],
+    };
+    const rangeFn = vi.fn().mockResolvedValue({ data: [rowComErp], error: null, count: 1 });
+    const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+    const eqFn = vi.fn().mockReturnValue({ order: orderFn });
+    const supabaseMock = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: eqFn }),
+      }),
+    };
+    vi.mocked(createClient).mockResolvedValue(
+      supabaseMock as unknown as Awaited<ReturnType<typeof createClient>>
+    );
+
+    const res = await GET(reqGet());
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    const payloadStr = JSON.stringify(json.data);
+    expect(payloadStr).not.toContain("token_f360_encrypted");
+    expect(payloadStr).not.toContain("token_f360");
+    expect(json.data.clientes[0]).not.toHaveProperty("token_f360_encrypted");
+    if (json.data.clientes[0].erpDetalhes) {
+      expect(json.data.clientes[0].erpDetalhes).not.toHaveProperty("token");
+    }
+  });
 });
 
 // ─── POST /api/clientes ───────────────────────────────────────────────────────

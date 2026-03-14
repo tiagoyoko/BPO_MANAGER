@@ -26,6 +26,7 @@ export function ClientesPageClient({ user, responsaveis, tagsDisponiveis }: Prop
     status: "",
     tags: [],
     responsavelInternoId: "",
+    erpStatus: "",
   });
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -51,6 +52,7 @@ export function ClientesPageClient({ user, responsaveis, tagsDisponiveis }: Prop
     if (filtros.status) params.set("status", filtros.status);
     if (filtros.tags.length > 0) params.set("tags", filtros.tags.join(","));
     if (filtros.responsavelInternoId) params.set("responsavelInternoId", filtros.responsavelInternoId);
+    if (filtros.erpStatus) params.set("erpStatus", filtros.erpStatus);
     params.set("page", String(page));
     params.set("limit", String(LIMIT));
     const res = await fetch(`/api/clientes?${params.toString()}`);
@@ -80,10 +82,10 @@ export function ClientesPageClient({ user, responsaveis, tagsDisponiveis }: Prop
     return () => window.clearTimeout(timeoutId);
   }, [feedback.open]);
 
-  function handleFiltrosChange(next: FiltrosClientes) {
+  const handleFiltrosChange = useCallback((next: FiltrosClientes) => {
     setFiltros(next);
     setPage(1);
-  }
+  }, []);
 
   function handleClienteSalvo(cliente: Cliente) {
     setClientes((prev) => {
@@ -142,7 +144,7 @@ export function ClientesPageClient({ user, responsaveis, tagsDisponiveis }: Prop
         limit={LIMIT}
         onPageChange={setPage}
         isLoadingClientes={isLoadingClientes}
-        filtrosAtivos={!!(filtros.search || filtros.status || filtros.tags.length || filtros.responsavelInternoId)}
+        filtrosAtivos={!!(filtros.search || filtros.status || filtros.tags.length || filtros.responsavelInternoId || filtros.erpStatus)}
         responsaveis={responsaveis}
       />
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth/user-context";
-import type { Cliente } from "@/lib/domain/clientes/types";
+import type { Cliente, ErpDetalhesCliente, ErpStatusCliente } from "@/lib/domain/clientes/types";
 
 type ResponsavelOption = {
   id: string;
@@ -68,6 +68,7 @@ export function ClientesList({
             <th scope="col" className="py-2 pr-4 font-medium">CNPJ</th>
             <th scope="col" className="py-2 pr-4 font-medium">Status</th>
             <th scope="col" className="py-2 pr-4 font-medium">Responsável interno</th>
+            <th scope="col" className="py-2 pr-4 font-medium">ERP/Integração</th>
             <th scope="col" className="py-2 pr-4 font-medium">Receita estimada</th>
             {podeEditar && <th scope="col" className="py-2 w-20 font-medium">Ações</th>}
           </tr>
@@ -107,6 +108,21 @@ export function ClientesList({
                 {c.responsavelInternoId
                   ? (responsavelPorId.get(c.responsavelInternoId) ?? "Responsável não encontrado")
                   : "Não definido"}
+              </td>
+              <td className="py-2 pr-4">
+                <Link
+                  href={`/clientes/${c.id}/config`}
+                  className="inline-block"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Status ERP do cliente ${c.nomeFantasia}`}
+                >
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-full text-xs ${erpBadgeClass(c.erpStatus)}`}
+                    title={erpTooltipText(c.erpDetalhes)}
+                  >
+                    {erpStatusLabel(c.erpStatus)}
+                  </span>
+                </Link>
               </td>
               <td className="py-2 pr-4">{formatarMoeda(c.receitaEstimada)}</td>
               {podeEditar && (
@@ -165,6 +181,36 @@ export function ClientesList({
       )}
     </div>
   );
+}
+
+function erpBadgeClass(status?: ErpStatusCliente): string {
+  switch (status) {
+    case "integracao_ativa":
+      return "bg-green-100 text-green-800";
+    case "config_basica_salva":
+      return "bg-amber-100 text-amber-800";
+    default:
+      return "bg-gray-100 text-gray-600";
+  }
+}
+
+function erpStatusLabel(status?: ErpStatusCliente): string {
+  switch (status) {
+    case "integracao_ativa":
+      return "F360 – ativo";
+    case "config_basica_salva":
+      return "F360 – config básica salva";
+    default:
+      return "Não configurado";
+  }
+}
+
+function erpTooltipText(detalhes?: ErpDetalhesCliente | null): string {
+  if (!detalhes) return "Nenhum ERP configurado";
+  const data = detalhes.ultimaAlteracao
+    ? new Date(detalhes.ultimaAlteracao).toLocaleDateString("pt-BR")
+    : "Token não configurado";
+  return `ERP: ${detalhes.tipoErp}\nÚltima alteração: ${data}`;
 }
 
 /** Classe Tailwind do badge de status conforme valor. */

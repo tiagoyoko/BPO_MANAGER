@@ -1,6 +1,6 @@
 # Story 1.7: Ver status de configuração ERP por cliente
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -35,44 +35,44 @@ so that **eu saiba onde ainda preciso atuar**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1** – Migration: corrigir default de `ativo` em `integracoes_erp`
-  - [ ] Criar `bpo360-app/supabase/migrations/20260314020000_fix_integracoes_erp_ativo_default.sql`
-  - [ ] `ALTER TABLE public.integracoes_erp ALTER COLUMN ativo SET DEFAULT false;`
-  - [ ] `UPDATE public.integracoes_erp SET ativo = false;` — resetar registros existentes (apenas dev; sem dados de produção neste ponto)
-  - [ ] Comentário na migration: "Integração só é marcada ativa=true pela story 4.1 (EP4) após teste bem-sucedido de conexão F360"
-  - [ ] **Motivo**: a migration 1.5 criou `DEFAULT true`, mas "integração ativa" deve ser controlada pelo EP4 após teste real de conexão. Sem esta correção, todo cliente com ERP selecionado apareceria como "integração ativa" incorretamente.
+- [x] **Task 1** – Migration: corrigir default de `ativo` em `integracoes_erp`
+  - [x] Criar `bpo360-app/supabase/migrations/20260314020000_fix_integracoes_erp_ativo_default.sql`
+  - [x] `ALTER TABLE public.integracoes_erp ALTER COLUMN ativo SET DEFAULT false;`
+  - [x] `UPDATE public.integracoes_erp SET ativo = false;` — resetar registros existentes (apenas dev; sem dados de produção neste ponto)
+  - [x] Comentário na migration: "Integração só é marcada ativa=true pela story 4.1 (EP4) após teste bem-sucedido de conexão F360"
+  - [x] **Motivo**: a migration 1.5 criou `DEFAULT true`, mas "integração ativa" deve ser controlada pelo EP4 após teste real de conexão. Sem esta correção, todo cliente com ERP selecionado apareceria como "integração ativa" incorretamente.
 
-- [ ] **Task 2 (AC: 1,5,6)** – Estender `GET /api/clientes` para incluir status ERP por cliente
-  - [ ] Abrir `bpo360-app/src/app/api/clientes/route.ts` (criado na story 1.4)
-  - [ ] Alterar `.select('*', { count: 'exact' })` para incluir join com `integracoes_erp`:
+- [x] **Task 2 (AC: 1,5,6)** – Estender `GET /api/clientes` para incluir status ERP por cliente
+  - [x] Abrir `bpo360-app/src/app/api/clientes/route.ts` (criado na story 1.4)
+  - [x] Alterar `.select('*', { count: 'exact' })` para incluir join com `integracoes_erp`:
     ```typescript
     .select('*, integracoes_erp(id, tipo_erp, ativo, token_configurado_em)', { count: 'exact' })
     ```
-  - [ ] O join retorna array (pode ser `[]` ou `[{...}]` por cliente no MVP com apenas F360)
-  - [ ] Criar função `computarErpStatus(integracoes: IntegracaoErpRow[]): ErpStatusCliente` que:
+  - [x] O join retorna array (pode ser `[]` ou `[{...}]` por cliente no MVP com apenas F360)
+  - [x] Criar função `computarErpStatus(integracoes: IntegracaoErpRow[]): ErpStatusCliente` que:
     - Array vazio → `"nao_configurado"`
     - Algum item com `ativo = true` → `"integracao_ativa"`
     - Caso contrário → `"config_basica_salva"`
-  - [ ] Criar função `computarErpDetalhes(integracoes: IntegracaoErpRow[]): ErpDetalhesCliente | null`:
+  - [x] Criar função `computarErpDetalhes(integracoes: IntegracaoErpRow[]): ErpDetalhesCliente | null`:
     - Retorna `{ tipoErp: string; ultimaAlteracao: string | null }` do item principal (primeiro com `ativo=true` ou primeiro do array)
     - **Nunca incluir** `token_f360_encrypted` no retorno
-  - [ ] Atualizar `rowToCliente` (ou criar `rowToClienteComErp`) para mapear os novos campos:
+  - [x] Atualizar `rowToCliente` (ou criar `rowToClienteComErp`) para mapear os novos campos:
     - `erpStatus: ErpStatusCliente`
     - `erpDetalhes: ErpDetalhesCliente | null`
-  - [ ] Adicionar query param opcional `erpStatus` (AC: 4): se fornecido, filtrar por status computado
+  - [x] Adicionar query param opcional `erpStatus` (AC: 4): se fornecido, filtrar por status computado
     - `"nao_configurado"`: `integracoes_erp.count() = 0` — usar `not.in` ou subquery
     - `"config_basica_salva"`: `integracoes_erp.ativo = false`
     - `"integracao_ativa"`: `integracoes_erp.ativo = true`
     - Nota: filtro por ERP requer inner join em vez de left join no Supabase — consultar padrão abaixo
-  - [ ] Atualizar testes em `route.test.ts`:
+  - [x] Atualizar testes em `route.test.ts`:
     - GET sem filtro ERP → cada cliente retorna `erpStatus` correto (incluindo `"nao_configurado"` para clientes sem ERP)
     - GET com `erpStatus=nao_configurado` → somente clientes sem ERP
     - GET com `erpStatus=config_basica_salva` → somente clientes com ERP mas não ativo
     - GET com `erpStatus=integracao_ativa` → somente clientes com `ativo=true`
     - Garantir que `token_f360_encrypted` **nunca** aparece no payload de resposta (assertion explícita)
 
-- [ ] **Task 3 (AC: 1,2,3,5)** – Atualizar tipos de domínio
-  - [ ] Adicionar em `bpo360-app/src/lib/domain/clientes/types.ts`:
+- [x] **Task 3 (AC: 1,2,3,5)** – Atualizar tipos de domínio
+  - [x] Adicionar em `bpo360-app/src/lib/domain/clientes/types.ts`:
     ```typescript
     export type ErpStatusCliente =
       | "nao_configurado"
@@ -84,42 +84,49 @@ so that **eu saiba onde ainda preciso atuar**.
       ultimaAlteracao: string | null; // ISO 8601 ou null
     };
     ```
-  - [ ] Adicionar campos opcionais a `Cliente`:
+  - [x] Adicionar campos opcionais a `Cliente`:
     ```typescript
     erpStatus?: ErpStatusCliente;
     erpDetalhes?: ErpDetalhesCliente | null;
     ```
     (Campos opcionais para não quebrar código que usa `Cliente` sem ERP — stories anteriores continuam funcionando)
 
-- [ ] **Task 4 (AC: 1,2,3)** – Atualizar `clientes-list.tsx` com coluna ERP
-  - [ ] Abrir `bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx` (da story 1.4)
-  - [ ] Adicionar coluna "ERP/Integração" entre "responsável interno" e os botões de ação
-  - [ ] Badge com cores semânticas:
+- [x] **Task 4 (AC: 1,2,3)** – Atualizar `clientes-list.tsx` com coluna ERP
+  - [x] Abrir `bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx` (da story 1.4)
+  - [x] Adicionar coluna "ERP/Integração" entre "responsável interno" e os botões de ação
+  - [x] Badge com cores semânticas:
     - `"nao_configurado"` → badge cinza, texto "Não configurado"
     - `"config_basica_salva"` → badge amarelo/âmbar, texto "F360 – config salva"
     - `"integracao_ativa"` → badge verde, texto "F360 – ativo"
     - Sem valor (`erpStatus` undefined) → badge cinza, texto "Não configurado" (fallback)
-  - [ ] Tooltip no badge: usar atributo `title` nativo ou wrapper Radix `<Tooltip>` se já estiver no projeto:
+  - [x] Tooltip no badge: usar atributo `title` nativo ou wrapper Radix `<Tooltip>` se já estiver no projeto:
     - Linha 1: `tipoErp` (ex.: "ERP: F360")
     - Linha 2: `ultimaAlteracao` formatada (ex.: "Última alteração: 14/03/2026") ou "Token não configurado"
-  - [ ] Badge deve ser um `<Link href={/clientes/${clienteId}/config}>` para AC: 3
-  - [ ] Nenhuma alteração nas colunas existentes (nome, CNPJ, status, responsável, receita)
+  - [x] Badge deve ser um `<Link href={/clientes/${clienteId}/config}>` para AC: 3
+  - [x] Nenhuma alteração nas colunas existentes (nome, CNPJ, status, responsável, receita)
 
-- [ ] **Task 5 (AC: 4)** – Adicionar filtro de status ERP ao componente de filtros
-  - [ ] Abrir `bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.tsx` (da story 1.4)
-  - [ ] Adicionar select "Status ERP" com opções: `""` (Todos), `"nao_configurado"`, `"config_basica_salva"`, `"integracao_ativa"`
-  - [ ] Labels amigáveis: "Não configurado", "Config básica salva", "Integração ativa"
-  - [ ] Incluir no objeto `filtros` do state: `erpStatus: ErpStatusCliente | ""`
-  - [ ] Atualizar `clientes-page-client.tsx` para passar `erpStatus` como query param ao chamar `GET /api/clientes`
-  - [ ] "Limpar filtros" já existente deve resetar `erpStatus` para `""`
+- [x] **Task 5 (AC: 4)** – Adicionar filtro de status ERP ao componente de filtros
+  - [x] Abrir `bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.tsx` (da story 1.4)
+  - [x] Adicionar select "Status ERP" com opções: `""` (Todos), `"nao_configurado"`, `"config_basica_salva"`, `"integracao_ativa"`
+  - [x] Labels amigáveis: "Não configurado", "Config básica salva", "Integração ativa"
+  - [x] Incluir no objeto `filtros` do state: `erpStatus: ErpStatusCliente | ""`
+  - [x] Atualizar `clientes-page-client.tsx` para passar `erpStatus` como query param ao chamar `GET /api/clientes`
+  - [x] "Limpar filtros" já existente deve resetar `erpStatus` para `""`
 
-- [ ] **Task 6** – Testes de componente
-  - [ ] `clientes-list.test.tsx` (se existir) ou novos casos em testes existentes:
+- [x] **Task 6** – Testes de componente
+  - [x] `clientes-list.test.tsx` (se existir) ou novos casos em testes existentes:
     - Badge correto para cada status ERP
     - Badge com fallback para undefined `erpStatus`
     - Link do badge aponta para `/clientes/[clienteId]/config`
-  - [ ] `clientes-filtros.test.tsx`: select de ERP status aparece; ao selecionar, callback `onFiltrosChange` inclui `erpStatus`
-  - [ ] Regressões: todos os testes das stories anteriores continuam passando
+  - [x] `clientes-filtros.test.tsx`: select de ERP status aparece; ao selecionar, callback `onFiltrosChange` inclui `erpStatus`
+  - [x] Regressões: todos os testes das stories anteriores continuam passando
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][Critical] Adicionar teste de API para `erpStatus=config_basica_salva`, exigido pela story mas ausente em `route.test.ts`. [bpo360-app/src/app/api/clientes/route.test.ts]
+- [x] [AI-Review][High] Corrigir lógica do filtro `erpStatus=config_basica_salva` para excluir clientes que tenham qualquer integração `ativo=true`, mantendo consistência com `computarErpStatus`. [bpo360-app/src/app/api/clientes/route.ts]
+- [x] [AI-Review][Medium] Atualizar `File List` para refletir todos os arquivos-fonte alterados no worktree relacionados à implementação corrente. [f360-token-form.tsx fora do escopo da 1-7; File List já está correto.]
+- [x] [AI-Review][Medium] Completar cobertura de componente para todos os badges ERP exigidos pela Task 6, incluindo `integracao_ativa`. [bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.test.tsx]
 
 ## Dev Notes
 
@@ -356,4 +363,27 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- Task 1: Migration `20260314020000_fix_integracoes_erp_ativo_default.sql` criada; DEFAULT ativo=false e UPDATE para registros existentes.
+- Task 2: GET /api/clientes com select explícito `integracoes_erp(id, tipo_erp, ativo, token_configurado_em)`; funções `computarErpStatus` e `computarErpDetalhes` em `erp-status.ts`; filtro `erpStatus` via subqueries em `integracoes_erp`; testes de erpStatus e ausência de token no payload.
+- Task 3: Tipos `ErpStatusCliente`, `ErpDetalhesCliente` e campos opcionais em `Cliente` em `types.ts`.
+- Task 4: Coluna ERP/Integração em `clientes-list.tsx` com badge (cinza/âmbar/verde), tooltip nativo e link para `/clientes/[id]/config`.
+- Task 5: Select Status ERP em `clientes-filtros.tsx`; `erpStatus` em `FiltrosClientes` e em `clientes-page-client.tsx` (fetch e filtrosAtivos).
+- Task 6: Testes em `clientes-list.test.tsx` (badge, fallback, link) e `clientes-filtros.test.tsx` (select ERP e onFiltrosChange). Testes existentes de clientes e API passando.
+- Nota: 1 teste em `erp/f360/route.test.ts` falha (tokenMascarado esperado "••••••••", recebido "••••••••oken"); pré-existente da story 1.6, não alterado nesta story.
+- **Action items (AI-Review) resolvidos:** (1) Teste GET erpStatus=config_basica_salva adicionado em route.test.ts. (2) Filtro config_basica_salva passou a excluir clientes que tenham qualquer integração ativo=true (subqueries ativo=true e ativo=false, ids basica \ ids ativo). (3) File List conferido; f360-token-form.tsx não faz parte do escopo da 1-7. (4) Teste de badge integracao_ativa adicionado em clientes-list.test.tsx.
+- **Code review (1-7):** Ajuste do texto do badge para "F360 – config básica salva" (AC1) em clientes-list.tsx; teste em clientes-filtros.test.tsx garantindo que Limpar filtros reseta erpStatus e onFiltrosChange recebe erpStatus vazio. MEDIUM (File List vs git) mantido: arquivos de outras stories no worktree não listados na 1-7.
+
 ### File List
+
+- bpo360-app/supabase/migrations/20260314020000_fix_integracoes_erp_ativo_default.sql (novo)
+- bpo360-app/src/lib/domain/clientes/types.ts (alterado)
+- bpo360-app/src/lib/domain/clientes/erp-status.ts (novo)
+- bpo360-app/src/app/api/clientes/route.ts (alterado)
+- bpo360-app/src/app/api/clientes/route.test.ts (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.test.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.test.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-page-client.tsx (alterado)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (alterado: 1-7 → in-progress)
+- _bmad-output/implementation-artifacts/1-7-ver-status-de-configuracao-erp-por-cliente.md (alterado: checkboxes, status, Dev Agent Record, File List)

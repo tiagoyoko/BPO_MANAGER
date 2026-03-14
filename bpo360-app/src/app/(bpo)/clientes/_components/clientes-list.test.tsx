@@ -99,4 +99,50 @@ describe("ClientesList", () => {
 
     expect(pushMock).toHaveBeenCalledWith("/clientes/cliente-1");
   });
+
+  it("exibe coluna ERP/Integração com badge Não configurado quando erpStatus undefined", () => {
+    renderList();
+    expect(screen.getByRole("columnheader", { name: "ERP/Integração" })).toBeDefined();
+    expect(screen.getByText("Não configurado")).toBeDefined();
+  });
+
+  it("exibe badge F360 – config básica salva quando erpStatus é config_basica_salva", () => {
+    const clienteComErp = { ...CLIENTE, erpStatus: "config_basica_salva" as const, erpDetalhes: { tipoErp: "F360", ultimaAlteracao: null } };
+    render(
+      <UserProvider user={USER}>
+        <ClientesList
+          clientes={[clienteComErp]}
+          total={1}
+          page={1}
+          limit={20}
+          onPageChange={vi.fn()}
+          responsaveis={[]}
+        />
+      </UserProvider>
+    );
+    expect(screen.getByText("F360 – config básica salva")).toBeDefined();
+  });
+
+  it("exibe badge F360 – ativo quando erpStatus é integracao_ativa", () => {
+    const clienteAtivo = { ...CLIENTE, id: "cliente-ativo-1", nomeFantasia: "Cliente F360 Ativo", erpStatus: "integracao_ativa" as const, erpDetalhes: { tipoErp: "F360", ultimaAlteracao: "2026-03-14T10:00:00Z" } };
+    render(
+      <UserProvider user={USER}>
+        <ClientesList
+          clientes={[clienteAtivo]}
+          total={1}
+          page={1}
+          limit={20}
+          onPageChange={vi.fn()}
+          responsaveis={[]}
+        />
+      </UserProvider>
+    );
+    expect(screen.getByText("F360 – ativo")).toBeDefined();
+  });
+
+  it("link do badge ERP aponta para /clientes/[clienteId]/config", () => {
+    renderList();
+    const link = screen.getByRole("link", { name: /Status ERP do cliente Empresa Teste/i });
+    expect(link.getAttribute("href")).toBe("/clientes/cliente-1/config");
+  });
 });

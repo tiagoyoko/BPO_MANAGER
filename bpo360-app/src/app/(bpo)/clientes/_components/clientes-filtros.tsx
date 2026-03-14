@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { StatusCliente } from "@/lib/domain/clientes/types";
+import type { ErpStatusCliente, StatusCliente } from "@/lib/domain/clientes/types";
 
 const STATUS_OPCOES: { value: "" | StatusCliente; label: string }[] = [
   { value: "", label: "Todos os status" },
@@ -11,11 +11,19 @@ const STATUS_OPCOES: { value: "" | StatusCliente; label: string }[] = [
   { value: "Encerrado", label: "Encerrado" },
 ];
 
+const ERP_STATUS_OPCOES: { value: "" | ErpStatusCliente; label: string }[] = [
+  { value: "", label: "Todos" },
+  { value: "nao_configurado", label: "Não configurado" },
+  { value: "config_basica_salva", label: "Config básica salva" },
+  { value: "integracao_ativa", label: "Integração ativa" },
+];
+
 export type FiltrosClientes = {
   search: string;
   status: string;
   tags: string[];
   responsavelInternoId: string;
+  erpStatus: "" | ErpStatusCliente;
 };
 
 type ResponsavelOption = {
@@ -40,6 +48,7 @@ export function ClientesFiltros({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
   const [responsavelInternoId, setResponsavelInternoId] = useState("");
+  const [erpStatus, setErpStatus] = useState<"" | ErpStatusCliente>("");
   const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
@@ -47,21 +56,21 @@ export function ClientesFiltros({
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  const filtros: FiltrosClientes = {
-    search: debouncedSearch,
-    status,
-    tags: [...tags],
-    responsavelInternoId,
-  };
-
   useEffect(() => {
-    onFiltrosChange(filtros);
-  }, [debouncedSearch, status, responsavelInternoId, tags.join(",")]);
+    onFiltrosChange({
+      search: debouncedSearch,
+      status,
+      tags: [...tags],
+      responsavelInternoId,
+      erpStatus,
+    });
+  }, [debouncedSearch, status, responsavelInternoId, erpStatus, tags, onFiltrosChange]);
 
   const temFiltrosAtivos =
     debouncedSearch !== "" ||
     status !== "" ||
     responsavelInternoId !== "" ||
+    erpStatus !== "" ||
     tags.length > 0;
 
   const limparFiltros = useCallback(() => {
@@ -69,6 +78,7 @@ export function ClientesFiltros({
     setDebouncedSearch("");
     setStatus("");
     setResponsavelInternoId("");
+    setErpStatus("");
     setTags([]);
   }, []);
 
@@ -101,6 +111,25 @@ export function ClientesFiltros({
           aria-label="Filtrar por status"
         >
           {STATUS_OPCOES.map((op) => (
+            <option key={op.value || "todos"} value={op.value}>
+              {op.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="clientes-erp-status" className="sr-only">
+          Status ERP
+        </label>
+        <select
+          id="clientes-erp-status"
+          value={erpStatus}
+          onChange={(e) => setErpStatus((e.target.value || "") as "" | ErpStatusCliente)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[160px]"
+          aria-label="Filtrar por status ERP"
+        >
+          {ERP_STATUS_OPCOES.map((op) => (
             <option key={op.value || "todos"} value={op.value}>
               {op.label}
             </option>
