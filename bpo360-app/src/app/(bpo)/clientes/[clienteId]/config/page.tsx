@@ -6,7 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { redirect, notFound } from "next/navigation";
 import { buscarClientePorIdEBpo } from "@/lib/domain/clientes/repository";
-import { buscarIntegracoesPorCliente } from "@/lib/domain/integracoes-erp/repository";
+import {
+  buscarIntegracaoF360Row,
+  buscarIntegracoesPorCliente,
+} from "@/lib/domain/integracoes-erp/repository";
+import { decrypt } from "@/lib/security/crypto";
 import { ErpConfigClient } from "./_components/erp-config-client";
 import { F360TokenForm } from "./_components/f360-token-form";
 
@@ -42,28 +46,49 @@ export default async function ClienteConfigPage({
   }
 
   const integracaoF360 = integracoes.find((i) => i.tipoErp === "F360");
+  let tokenMascaradoInicial = integracaoF360?.tokenMascarado ?? null;
+
+  if (integracaoF360?.tokenConfigurado) {
+    const integracaoF360Row = await buscarIntegracaoF360Row(supabase, clienteId, user.bpoId);
+    if (integracaoF360Row?.token_f360_encrypted) {
+      try {
+        tokenMascaradoInicial =
+          "••••••••" + decrypt(integracaoF360Row.token_f360_encrypted).slice(-4);
+      } catch {
+        throw new Error("Erro ao processar configuração F360.");
+      }
+    }
+  }
 
   return (
     <section aria-label="Configurações do cliente">
-      <ErpConfigClient
-        integracoes={integracoes}
-        clienteId={clienteId}
-        userRole={user.role}
-      />
+      <div id="erp">
+        <ErpConfigClient
+          integracoes={integracoes}
+          clienteId={clienteId}
+          userRole={user.role}
+        />
+      </div>
       {integracaoF360 ? (
         <F360TokenForm
           integracaoId={integracaoF360.id}
           clienteId={clienteId}
           userRole={user.role}
           tokenConfigurado={integracaoF360.tokenConfigurado}
-          tokenMascarado={integracaoF360.tokenMascarado}
+          tokenMascarado={tokenMascaradoInicial}
           observacoes={integracaoF360.observacoes}
           tokenConfiguradoEm={integracaoF360.tokenConfiguradoEm}
         />
       ) : (
         <div className="mt-6 rounded-lg border border-border bg-muted/20 p-4">
           <p className="text-sm text-muted-foreground">
-            Configure o ERP F360 na seção acima para liberar esta etapa.
+            <a
+              href={`/clientes/${clienteId}/config#erp`}
+              className="font-medium text-primary hover:underline"
+            >
+              Configure o ERP F360 na seção acima
+            </a>{" "}
+            para liberar esta etapa.
           </p>
         </div>
       )}

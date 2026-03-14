@@ -66,6 +66,7 @@ export function F360TokenForm({
     const t = token.trim();
     if (!t) {
       setErroF360("Token F360 é obrigatório");
+      showToast("error", "Token F360 é obrigatório");
       return;
     }
     setErroF360(null);
@@ -107,14 +108,22 @@ export function F360TokenForm({
   }
 
   const editavel = podeEditar(userRole);
-  const mostrarFormulario = !tokenConfigurado || modoEdicao;
+  const mostrarFormulario = (!tokenConfigurado || modoEdicao) && editavel;
+  const operadorSemToken = !editavel && !tokenConfigurado;
 
   return (
     <>
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-4" data-integracao-id={integracaoId}>
         <h3 className="text-base font-medium text-foreground">Integração F360</h3>
 
-        {mostrarFormulario ? (
+        {operadorSemToken ? (
+          <div className="rounded-lg border border-border bg-muted/20 p-4">
+            <p className="text-sm text-muted-foreground">Token não configurado.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Apenas gestores podem configurar o token F360.
+            </p>
+          </div>
+        ) : mostrarFormulario ? (
           <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
             <p className="text-xs text-muted-foreground">
               O token F360 é gerado no painel F360 Finanças em{" "}
@@ -140,14 +149,9 @@ export function F360TokenForm({
                   className="rounded-md border border-input px-2 text-sm"
                   aria-label={revelarToken ? "Ocultar token" : "Revelar token"}
                 >
-                  {revelarToken ? "🙈" : "👁"}
+                  {revelarToken ? "Ocultar" : "Mostrar"}
                 </button>
               </div>
-              {erroF360 && (
-                <p className="text-sm text-destructive" role="alert">
-                  {erroF360}
-                </p>
-              )}
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-foreground">
