@@ -163,4 +163,34 @@ describe("PATCH /api/tarefas/[tarefaId]/checklist/[itemId]", () => {
     expect(res.status).toBe(400);
     expect(json.error?.code).toBe("CHECKLIST_LOCKED");
   });
+
+  it("retorna 400 ao desmarcar item opcional com tarefa concluída", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    vi.mocked(createClient).mockResolvedValue(
+      createSupabaseForChecklistPatch({
+        tarefa: { id: "tarefa-1", bpo_id: "bpo-1", status: "concluida" },
+        item: {
+          id: "item-1",
+          tarefa_id: "tarefa-1",
+          titulo: "Item opcional",
+          obrigatorio: false,
+          concluido: true,
+          concluido_por_id: "user-1",
+          concluido_em: "2026-03-14T12:00:00Z",
+        },
+      }) as never
+    );
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1/checklist/item-1", {
+        method: "PATCH",
+        body: JSON.stringify({ concluido: false }),
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1", itemId: "item-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error?.code).toBe("CHECKLIST_LOCKED");
+  });
 });

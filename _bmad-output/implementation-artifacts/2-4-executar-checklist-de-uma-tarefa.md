@@ -91,6 +91,7 @@ so that **todos os passos da rotina sejam cumpridos**.
 ### Change Log
 
  - 2026-03-14: Code review 2.4 corrigiu a implementação da story, incluindo endpoint de checklist, histórico persistido, validação de conclusão e UI interativa.
+ - 2026-03-14: Code review: File List completado (types.ts, migration); teste para desmarcar item opcional com tarefa concluída; status → done.
 
 ### File List
 
