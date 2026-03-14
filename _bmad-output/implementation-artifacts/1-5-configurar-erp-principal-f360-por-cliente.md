@@ -1,6 +1,6 @@
 # Story 1.5: Configurar ERP principal (F360) por cliente
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -32,34 +32,34 @@ so that **o sistema saiba de onde buscar dados e quais integrações ativar**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 (AC: 1,2,3,4,5,6)** – Migração: criar tabela `integracoes_erp`
-  - [ ] Criar `bpo360-app/supabase/migrations/20260314000000_create_integracoes_erp_table.sql`
-  - [ ] Tabela com colunas: `id UUID PK`, `bpo_id UUID NOT NULL REFERENCES bpos(id) ON DELETE CASCADE`, `cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE CASCADE`, `tipo_erp TEXT NOT NULL`, `e_principal BOOLEAN NOT NULL DEFAULT true`, `ativo BOOLEAN NOT NULL DEFAULT true`, `created_at TIMESTAMPTZ DEFAULT now()`, `updated_at TIMESTAMPTZ DEFAULT now()`
-  - [ ] Constraint CHECK: `tipo_erp IN ('F360')` — extensível em migrations futuras (EP4+)
-  - [ ] Constraint UNIQUE: `(cliente_id, tipo_erp)` — apenas uma config por ERP por cliente
-  - [ ] Índices: `idx_integracoes_erp_cliente_id ON (cliente_id)`, `idx_integracoes_erp_bpo_id ON (bpo_id)`
-  - [ ] Trigger `set_updated_at` (reutilizar a função `public.set_updated_at()` já existente da migração da tabela `clientes`)
-  - [ ] RLS: habilitar + políticas SELECT/INSERT/UPDATE usando `bpo_id = public.get_my_bpo_id()` e role guard
+- [x] **Task 1 (AC: 1,2,3,4,5,6)** – Migração: criar tabela `integracoes_erp`
+  - [x] Criar `bpo360-app/supabase/migrations/20260314000000_create_integracoes_erp_table.sql`
+  - [x] Tabela com colunas: `id UUID PK`, `bpo_id UUID NOT NULL REFERENCES bpos(id) ON DELETE CASCADE`, `cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE CASCADE`, `tipo_erp TEXT NOT NULL`, `e_principal BOOLEAN NOT NULL DEFAULT true`, `ativo BOOLEAN NOT NULL DEFAULT true`, `created_at TIMESTAMPTZ DEFAULT now()`, `updated_at TIMESTAMPTZ DEFAULT now()`
+  - [x] Constraint CHECK: `tipo_erp IN ('F360')` — extensível em migrations futuras (EP4+)
+  - [x] Constraint UNIQUE: `(cliente_id, tipo_erp)` — apenas uma config por ERP por cliente
+  - [x] Índices: `idx_integracoes_erp_cliente_id ON (cliente_id)`, `idx_integracoes_erp_bpo_id ON (bpo_id)`
+  - [x] Trigger `set_updated_at` (reutilizar a função `public.set_updated_at()` já existente da migração da tabela `clientes`)
+  - [x] RLS: habilitar + políticas SELECT/INSERT/UPDATE usando `bpo_id = public.get_my_bpo_id()` e role guard
 
-- [ ] **Task 2 (AC: 5,6)** – Domínio: tipos e repositório de `integracoes_erp`
-  - [ ] Criar `bpo360-app/src/lib/domain/integracoes-erp/types.ts` com:
+- [x] **Task 2 (AC: 5,6)** – Domínio: tipos e repositório de `integracoes_erp`
+  - [x] Criar `bpo360-app/src/lib/domain/integracoes-erp/types.ts` com:
     - `ErpTipo = "F360"` (type literal, não enum — compatível com evolução)
     - `IntegracaoErpRow` (snake_case, linha do banco)
     - `IntegracaoErp` (camelCase, domínio)
     - `NovaIntegracaoErpInput` (payload POST)
     - `AtualizarIntegracaoErpInput` (payload PATCH)
-  - [ ] Criar `bpo360-app/src/lib/domain/integracoes-erp/repository.ts` com:
+  - [x] Criar `bpo360-app/src/lib/domain/integracoes-erp/repository.ts` com:
     - `buscarIntegracoesPorCliente(supabase, clienteId, bpoId): Promise<IntegracaoErp[]>`
     - `buscarIntegracaoPrincipal(supabase, clienteId, bpoId): Promise<IntegracaoErp | null>`
     - `rowToIntegracaoErp(row: IntegracaoErpRow): IntegracaoErp` (mapper snake_case → camelCase)
-  - [ ] Testes: `repository.test.ts` com casos básicos de mapeamento
+  - [x] Testes: `repository.test.ts` com casos básicos de mapeamento
 
-- [ ] **Task 3 (AC: 2,3,4,5)** – API: `GET` e `POST /api/clientes/[clienteId]/erp`
-  - [ ] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/route.ts`
-  - [ ] **GET**: retorna lista de `IntegracaoErp` do cliente. Guard: qualquer papel exceto `cliente_final` (403). Valida que `clienteId` pertence ao `bpoId` do user via `buscarClientePorIdEBpo`. Resposta: `{ data: { integracoes: IntegracaoErp[] }, error: null }`.
-  - [ ] **POST**: cria ou atualiza config ERP (upsert por `cliente_id + tipo_erp`). Guard: somente `admin_bpo` e `gestor_bpo`. Body: `{ tipoErp: "F360", ePrincipal: true }`. Valida campos obrigatórios. Resposta: `{ data: { integracao: IntegracaoErp }, error: null }` HTTP 201 (criação) ou 200 (atualização).
-  - [ ] Usar `buscarClientePorIdEBpo` para validar ownership antes de qualquer escrita
-  - [ ] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/route.test.ts` com testes para:
+- [x] **Task 3 (AC: 2,3,4,5)** – API: `GET` e `POST /api/clientes/[clienteId]/erp`
+  - [x] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/route.ts`
+  - [x] **GET**: retorna lista de `IntegracaoErp` do cliente. Guard: qualquer papel exceto `cliente_final` (403). Valida que `clienteId` pertence ao `bpoId` do user via `buscarClientePorIdEBpo`. Resposta: `{ data: { integracoes: IntegracaoErp[] }, error: null }`.
+  - [x] **POST**: cria ou atualiza config ERP (upsert por `cliente_id + tipo_erp`). Guard: somente `admin_bpo` e `gestor_bpo`. Body: `{ tipoErp: "F360", ePrincipal: true }`. Valida campos obrigatórios. Resposta: `{ data: { integracao: IntegracaoErp }, error: null }` HTTP 201 (criação) ou 200 (atualização).
+  - [x] Usar `buscarClientePorIdEBpo` para validar ownership antes de qualquer escrita
+  - [x] Criar `bpo360-app/src/app/api/clientes/[clienteId]/erp/route.test.ts` com testes para:
     - GET sem auth → 401
     - GET com `cliente_final` → 403
     - GET com cliente de outro BPO → 404
@@ -70,21 +70,21 @@ so that **o sistema saiba de onde buscar dados e quais integrações ativar**.
     - POST cria nova integração → 201
     - POST segunda vez (upsert) → 200
 
-- [ ] **Task 4 (AC: 1,2,3,4)** – Página de detalhes do cliente com tabs
-  - [ ] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/page.tsx` (Server Component)
+- [x] **Task 4 (AC: 1,2,3,4)** – Página de detalhes do cliente com tabs
+  - [x] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/page.tsx` (Server Component)
     - Verificar auth com `getCurrentUser()` — redirecionar para `/login` se não autenticado
     - Carregar dados básicos do cliente via `buscarClientePorIdEBpo` (a função já existe no repositório)
     - Renderizar layout com nome do cliente e navegação de abas: `Resumo`, `Configurações`
     - Usar `Link` do Next.js para navegação entre tabs (`/clientes/[clienteId]` e `/clientes/[clienteId]/config`)
     - Placeholder simples para aba "Resumo" (expandida em stories futuras do EP1/EP5)
-  - [ ] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/layout.tsx` com o shell de abas reutilizável entre sub-rotas
+  - [x] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/layout.tsx` com o shell de abas reutilizável entre sub-rotas
 
-- [ ] **Task 5 (AC: 1,2,3,4,5)** – Página de configuração + formulário ERP
-  - [ ] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx` (Server Component)
+- [x] **Task 5 (AC: 1,2,3,4,5)** – Página de configuração + formulário ERP
+  - [x] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx` (Server Component)
     - Auth + ownership check (`buscarClientePorIdEBpo`)
     - Carregar ERPs via `GET /api/clientes/[clienteId]/erp` ou direto via repositório no servidor
     - Renderizar `<ErpConfigClient integracoes={...} clienteId={...} userRole={...} />`
-  - [ ] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/erp-config-client.tsx` (Client Component)
+  - [x] Criar `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/erp-config-client.tsx` (Client Component)
     - Props: `integracoes: IntegracaoErp[]`, `clienteId: string`, `userRole: string`
     - Estado: `isLoadingErp` (bool), `integracoes` local (array), `erro` (string | null)
     - Se `operador_bpo`: exibir config em modo somente-leitura (sem botão salvar)
@@ -96,9 +96,9 @@ so that **o sistema saiba de onde buscar dados e quais integrações ativar**.
     - Feedback de erro via `src/components/feedback/` (não criar novo padrão)
     - Convenção: `isLoadingErp` para loading, `isSubmittingErp` para submit
 
-- [ ] **Task 6** – Testes de componente e integração
-  - [ ] `erp-config-client.test.tsx`: renderização com/sem ERPs, modo readonly para `operador_bpo`, envio de formulário, exibição de erro
-  - [ ] Regressões: garantir que os testes anteriores (stories 1.2, 1.3, 1.4) continuam passando
+- [x] **Task 6** – Testes de componente e integração
+  - [x] `erp-config-client.test.tsx`: renderização com/sem ERPs, modo readonly para `operador_bpo`, envio de formulário, exibição de erro
+  - [x] Regressões: garantir que os testes anteriores (stories 1.2, 1.3, 1.4) continuam passando
 
 ## Dev Notes
 
@@ -414,4 +414,26 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- Migration `20260314000000_create_integracoes_erp_table.sql`: tabela `integracoes_erp`, RLS, trigger `set_updated_at` reutilizado.
+- Domínio: `types.ts`, `repository.ts`, `repository.test.ts` (mapeamento rowToIntegracaoErp).
+- API GET/POST `/api/clientes/[clienteId]/erp`: guards por role, ownership via `buscarClientePorIdEBpo`, POST upsert com 201/200.
+- Layout e páginas: `[clienteId]/layout.tsx` (nome do cliente + abas Resumo/Configurações; aba Config oculta para `cliente_final`), `[clienteId]/page.tsx` (placeholder Resumo), `[clienteId]/config/page.tsx` + `ErpConfigClient` (formulário F360, readonly para operador, FeedbackToast).
+- Testes: 9 casos em `route.test.ts`, 7 em `erp-config-client.test.tsx`. Suite total 83 testes passando (regressão 1.2–1.4 ok).
+
 ### File List
+
+- bpo360-app/supabase/migrations/20260314000000_create_integracoes_erp_table.sql
+- bpo360-app/src/lib/domain/integracoes-erp/types.ts
+- bpo360-app/src/lib/domain/integracoes-erp/repository.ts
+- bpo360-app/src/lib/domain/integracoes-erp/repository.test.ts
+- bpo360-app/src/app/api/clientes/[clienteId]/erp/route.ts
+- bpo360-app/src/app/api/clientes/[clienteId]/erp/route.test.ts
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/layout.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/page.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/erp-config-client.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/erp-config-client.test.tsx
+
+### Change Log
+
+- 2026-03-14: Story 1.5 implementada (migração, domínio, API, páginas cliente/config, ErpConfigClient, testes). Status → review.
