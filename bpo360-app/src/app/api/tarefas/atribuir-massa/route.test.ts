@@ -80,6 +80,47 @@ function createSupabaseResponsavel(responsavel: { id: string; bpo_id: string; ro
   return { from };
 }
 
+function createSupabaseHistoricoFalha() {
+  const update = vi.fn().mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    }),
+  });
+  const insertHistorico = vi.fn().mockResolvedValue({ error: { message: "historico insert failed" } });
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "usuarios") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: "resp-1", bpo_id: "bpo-1", role: "operador_bpo" },
+              error: null,
+            }),
+          }),
+        }),
+      };
+    }
+    if (table === "tarefas") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: "t1", responsavel_id: "old", bpo_id: "bpo-1" },
+              error: null,
+            }),
+          }),
+        }),
+        update,
+      };
+    }
+    if (table === "tarefa_historico") {
+      return { insert: insertHistorico };
+    }
+    return {};
+  });
+  return { from, update, insertHistorico };
+}
+
 function createSupabaseTarefaOutroBpo() {
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === "usuarios") {
@@ -196,7 +237,7 @@ describe("POST /api/tarefas/atribuir-massa", () => {
     expect(json.data?.falhas).toEqual([]);
   });
 
-  it("admin pode chamar API com sucesso", async () => {
+  it("admin pode chamar API (gestor/operador como responsável)", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(ADMIN);
     const supabase = createSupabaseUpdateOk();
     vi.mocked(createClient).mockResolvedValue(supabase as never);
@@ -206,6 +247,8 @@ describe("POST /api/tarefas/atribuir-massa", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data?.sucesso).toBe(1);
   });
 
   it("retorna 400 quando body inválido ou faltando tarefaIds/responsavelId", async () => {
@@ -238,6 +281,20 @@ describe("POST /api/tarefas/atribuir-massa", () => {
     expect(json.error?.message).toMatch(/mesmo BPO/i);
   });
 
+  it("retorna 400 quando responsavelId é admin_bpo (apenas operador ou gestor)", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      createSupabaseResponsavel({ id: "resp-admin", bpo_id: "bpo-1", role: "admin_bpo" }) as never
+    );
+    const req = new NextRequest("http://localhost/api/tarefas/atribuir-massa", {
+      method: "POST",
+      body: JSON.stringify({ tarefaIds: ["t1"], responsavelId: "resp-admin" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error?.message).toMatch(/operador ou gestor|não admin/i);
+  });
+
   it("tarefas de outro BPO vão para falhas e não atualiza", async () => {
     vi.mocked(createClient).mockResolvedValue(createSupabaseTarefaOutroBpo() as never);
     const req = new NextRequest("http://localhost/api/tarefas/atribuir-massa", {
@@ -250,5 +307,22 @@ describe("POST /api/tarefas/atribuir-massa", () => {
     expect(json.data?.sucesso).toBe(0);
     expect(json.data?.falhas).toHaveLength(1);
     expect(json.data?.falhas[0].motivo).toMatch(/outro BPO/i);
+  });
+
+  it("falha ao gravar tarefa_historico conta como falha da tarefa e não incrementa sucesso", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const supabase = createSupabaseHistoricoFalha();
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+    const req = new NextRequest("http://localhost/api/tarefas/atribuir-massa", {
+      method: "POST",
+      body: JSON.stringify({ tarefaIds: ["t1"], responsavelId: "resp-1" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data?.sucesso).toBe(0);
+    expect(json.data?.falhas).toHaveLength(1);
+    expect(json.data?.falhas[0].tarefaId).toBe("t1");
+    expect(json.data?.falhas[0].motivo).toMatch(/histórico/i);
   });
 });

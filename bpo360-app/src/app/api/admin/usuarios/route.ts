@@ -53,12 +53,16 @@ export async function GET(request: Request) {
     .select("id, nome, email, role, cliente_id, created_at, updated_at")
     .eq("bpo_id", user.bpoId);
 
-  const query =
+  let query =
     tipo === "cliente"
       ? clienteId
         ? baseQuery.eq("role", ROLE_CLIENTE_FINAL).eq("cliente_id", clienteId)
         : baseQuery.eq("role", ROLE_CLIENTE_FINAL)
       : baseQuery.neq("role", ROLE_CLIENTE_FINAL);
+
+  if (tipo === "interno" && paraAtribuicao) {
+    query = query.in("role", ["operador_bpo", "gestor_bpo"]);
+  }
 
   if (tipo === "cliente") {
     if (!canManageClienteUsers(user)) {

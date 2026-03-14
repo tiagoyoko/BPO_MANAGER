@@ -1,6 +1,6 @@
 # Story 2.5: Atribuição em massa de tarefas
 
-Status: done
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,6 +32,11 @@ so that **eu redistribua carga rapidamente**.
   - [x] Atribuir em massa atualiza todas as tarefas do BPO; tarefaIds de outro BPO são rejeitadas (em falhas).
   - [x] Gestor pode chamar API; operador recebe 403.
   - [x] responsavelId de outro BPO retorna 400 ou falha.
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] Restringir `responsavelId` a `operador_bpo` ou `gestor_bpo` no backend e na lista `paraAtribuicao=1`; hoje a rota aceita `admin_bpo`, contrariando o AC 4 e a própria descrição da Task 1. [bpo360-app/src/app/api/tarefas/atribuir-massa/route.ts:69]
+- [x] [AI-Review][HIGH] Tratar falha de insert em `tarefa_historico` como falha da tarefa no lote; hoje a API incrementa `sucesso` mesmo sem garantir auditoria, contrariando AC 1 / RF-08. [bpo360-app/src/app/api/tarefas/atribuir-massa/route.ts:112]
 
 ## Dev Notes
 
@@ -83,6 +88,12 @@ so that **eu redistribua carga rapidamente**.
 - Task 4: Migration 20260314210000_create_tarefa_historico.sql; insert na rota atribuir-massa.
 - Task 5: route.test.ts — 401, 403 operador, gestor/admin 200, 400 body/responsavel outro BPO, tarefa outro BPO em falhas.
 - **Code review (2-5):** Corrigidos 2 HIGH em tarefas-cliente-client.tsx: (1) tarefasPorData/calendarDays/tarefasPorDia movidos acima de idsNaPagina para evitar ReferenceError; (2) estado e memos faltantes (calendarMode, selectedDate, tipo, weeklyRange, weekCells, tiposServico) para view calendário e filtro Tipo. Filtro tipo ligado ao fetch (params).
+- **Code review (2-5) 2026-03-14:** Story revertida para `in-progress`. Pendências HIGH: (1) `responsavelId` ainda aceita `admin_bpo` na API e na fonte de opções da UI, divergindo do AC 4; (2) falha ao gravar `tarefa_historico` não impede contagem de sucesso nem retorna falha por tarefa.
+- **Review follow-ups 2026-03-14:** ✅ Resolvido [HIGH] responsavelId restrito a operador_bpo/gestor_bpo na API (route.ts) e na lista paraAtribuicao=1 (usuarios/route.ts). ✅ Resolvido [HIGH] falha de insert em tarefa_historico tratada como falha da tarefa: não incrementa sucesso, reverte update da tarefa e adiciona em falhas[]; teste adicionado.
+
+### Change Log
+
+- Addressed code review findings — 2 items resolved (2026-03-14).
 
 ### File List
 

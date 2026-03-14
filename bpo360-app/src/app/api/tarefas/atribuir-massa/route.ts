@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (!["operador_bpo", "gestor_bpo", "admin_bpo"].includes(resp.role)) {
+  if (!["operador_bpo", "gestor_bpo"].includes(resp.role)) {
     return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "Responsável deve ser operador ou gestor do BPO." } },
+      { data: null, error: { code: "BAD_REQUEST", message: "Responsável deve ser operador ou gestor do BPO (não admin)." } },
       { status: 400 }
     );
   }
@@ -109,13 +109,23 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      await supabase.from("tarefa_historico").insert({
+      const { error: errHistorico } = await supabase.from("tarefa_historico").insert({
         tarefa_id: tarefaId,
         campo: "responsavel_id",
         valor_anterior: valorAnterior,
         valor_novo: valorNovo,
         usuario_id: user.id,
       });
+
+      if (errHistorico) {
+        await supabase
+          .from("tarefas")
+          .update({ responsavel_id: valorAnterior || null })
+          .eq("id", tarefaId)
+          .eq("bpo_id", user.bpoId);
+        falhas.push({ tarefaId, motivo: `Falha ao registrar histórico: ${errHistorico.message}` });
+        continue;
+      }
 
       sucesso++;
     } catch (e) {
