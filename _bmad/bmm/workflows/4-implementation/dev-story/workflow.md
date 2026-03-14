@@ -179,27 +179,31 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action if="incomplete task or subtask requirements ambiguous">ASK user to clarify or HALT</action>
   </step>
 
-  <step n="2" goal="Create feature branch before development" tag="git">
-    <critical>Always create a new branch for the story so work is isolated and mergeable</critical>
+  <step n="2" goal="Create feature branch and isolated worktree before development" tag="git">
+    <critical>Always create or reuse a story branch and a dedicated git worktree so implementation is isolated, resumable, and mergeable</critical>
+    <critical>When git is available, do not implement directly in the user's currently-open working tree</critical>
 
     <action>Check if repository root is a git repository (e.g. .git exists or git status succeeds)</action>
 
     <check if="not a git repository">
-      <output>ℹ️ Not a git repository — skipping branch creation</output>
+      <output>ℹ️ Not a git repository — skipping branch/worktree creation</output>
       <action>Continue to next step</action>
     </check>
 
     <check if="is a git repository">
       <action>Derive branch name from {{story_key}}: use pattern `story/{{story_key}}` (e.g. story/1-7-ver-status-de-configuracao-erp-por-cliente). Replace spaces or invalid characters with hyphens; keep only one hyphen between segments.</action>
-      <action>Ensure working tree is clean or that uncommitted changes are acceptable (if dirty, optionally inform user and proceed or HALT per project policy)</action>
-      <action>Create and checkout the branch: git checkout -b story/{{story_key}}</action>
-      <action>If branch already exists (e.g. resuming), checkout that branch: git checkout story/{{story_key}}</action>
+      <action>Determine default branch (`origin/HEAD` → main/master fallback) and current branch for context.</action>
+      <action>Create the story branch if it does not exist: `git checkout -b story/{{story_key}}` from the appropriate base branch. If it already exists, reuse it.</action>
+      <action>Derive a dedicated worktree path for the story branch (for example in `/tmp/` or another project-safe temporary location).</action>
+      <action>If a worktree for `story/{{story_key}}` already exists, reuse it. Otherwise create it with `git worktree add {worktree_path} story/{{story_key}}`.</action>
+      <action>Run all subsequent development steps from the story worktree path, not from the original working tree.</action>
       <output>🌿 **Branch:** story/{{story_key}}
-        Development will run on this branch.
+        🗂️ **Worktree:** {{worktree_path}}
+        Development will run in the isolated story worktree.
       </output>
     </check>
 
-    <action if="git checkout or create fails (e.g. conflict or permission)">HALT: "Could not create or checkout branch. Resolve git state and retry."</action>
+    <action if="git branch or worktree setup fails (e.g. conflict or permission)">HALT: "Could not create or reuse the story branch/worktree. Resolve git state and retry."</action>
   </step>
 
   <step n="3" goal="Load project context and story information">

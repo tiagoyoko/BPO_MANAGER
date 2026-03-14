@@ -4,3 +4,5 @@ description: Execute story implementation following a context filled story spec 
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL {project-root}/_bmad/bmm/workflows/4-implementation/dev-story/workflow.md, READ its entire contents and follow its directions exactly!
+
+ADDITIONAL PROJECT RULE: before starting implementation, you MUST create or reuse a dedicated story branch and a dedicated git worktree for that branch. Do not develop directly in the user's currently-open working tree when git is available.
