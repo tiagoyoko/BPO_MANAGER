@@ -265,4 +265,49 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
   </output>
 </step>
 
+<step n="6" goal="Commit and merge when story is fully done" tag="git">
+  <critical>Only run when story is truly complete: status = done, no pending action items, no HIGH/MEDIUM issues left</critical>
+
+  <check if="{{new_status}} != 'done'">
+    <action>Skip this step — story not done, no commit/merge</action>
+  </check>
+
+  <check if="{{new_status}} == 'done'">
+    <action>Check if repository root is a git repository</action>
+
+    <check if="not a git repository">
+      <output>ℹ️ Not a git repository — skipping commit and merge</output>
+    </check>
+
+    <check if="is a git repository">
+      <action>Run `git status --porcelain` to see if there are uncommitted changes</action>
+
+      <check if="there are uncommitted changes">
+        <action>Stage all changes: `git add .` (or stage paths from story File List if project prefers)</action>
+        <action>Commit with message: `Story {{story_key}}: review complete, status done`</action>
+        <action>If commit fails (e.g. pre-commit hook), output error and HALT so user can resolve</action>
+        <output>✅ **Commit:** changes committed on current branch</output>
+      </check>
+
+      <check if="no uncommitted changes">
+        <output>ℹ️ Working tree clean — nothing to commit</output>
+      </check>
+
+      <action>Get current branch: `git branch --show-current` and store as {{current_branch}}</action>
+      <action>Detect default branch: `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null` (e.g. refs/remotes/origin/main → main) or assume `main`; fallback `master` → {{default_branch}}</action>
+
+      <check if="current_branch equals default_branch (e.g. already on main)">
+        <output>ℹ️ Already on default branch ({{current_branch}}) — no merge needed</output>
+      </check>
+
+      <check if="current_branch is a story branch (name starts with story/ or equals story/{{story_key}})">
+        <action>Checkout default branch: `git checkout {{default_branch}}`</action>
+        <action>Merge story branch into default: `git merge {{current_branch}} --no-edit`</action>
+        <action>If merge fails (e.g. conflicts), output error and HALT so user can resolve</action>
+        <output>✅ **Merge:** {{current_branch}} merged into {{default_branch}}. Story is complete and integrated.</output>
+      </check>
+    </check>
+  </check>
+</step>
+
 </workflow>

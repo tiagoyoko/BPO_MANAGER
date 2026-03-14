@@ -173,13 +173,36 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action>Identify first incomplete task (unchecked [ ]) in Tasks/Subtasks</action>
 
     <action if="no incomplete tasks">
-      <goto step="6">Completion sequence</goto>
+      <goto step="7">Completion sequence</goto>
     </action>
     <action if="story file inaccessible">HALT: "Cannot develop story without access to story file"</action>
     <action if="incomplete task or subtask requirements ambiguous">ASK user to clarify or HALT</action>
   </step>
 
-  <step n="2" goal="Load project context and story information">
+  <step n="2" goal="Create feature branch before development" tag="git">
+    <critical>Always create a new branch for the story so work is isolated and mergeable</critical>
+
+    <action>Check if repository root is a git repository (e.g. .git exists or git status succeeds)</action>
+
+    <check if="not a git repository">
+      <output>ℹ️ Not a git repository — skipping branch creation</output>
+      <action>Continue to next step</action>
+    </check>
+
+    <check if="is a git repository">
+      <action>Derive branch name from {{story_key}}: use pattern `story/{{story_key}}` (e.g. story/1-7-ver-status-de-configuracao-erp-por-cliente). Replace spaces or invalid characters with hyphens; keep only one hyphen between segments.</action>
+      <action>Ensure working tree is clean or that uncommitted changes are acceptable (if dirty, optionally inform user and proceed or HALT per project policy)</action>
+      <action>Create and checkout the branch: git checkout -b story/{{story_key}}</action>
+      <action>If branch already exists (e.g. resuming), checkout that branch: git checkout story/{{story_key}}</action>
+      <output>🌿 **Branch:** story/{{story_key}}
+        Development will run on this branch.
+      </output>
+    </check>
+
+    <action if="git checkout or create fails (e.g. conflict or permission)">HALT: "Could not create or checkout branch. Resolve git state and retry."</action>
+  </step>
+
+  <step n="3" goal="Load project context and story information">
     <critical>Load all available context to inform implementation</critical>
 
     <action>Load {project_context} for coding standards and project-wide patterns (if exists)</action>
@@ -192,7 +215,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     </output>
   </step>
 
-  <step n="3" goal="Detect review continuation and extract review context">
+  <step n="4" goal="Detect review continuation and extract review context">
     <critical>Determine if this is a fresh start or continuation after code review</critical>
 
     <action>Check if "Senior Developer Review (AI)" section exists in the story file</action>
@@ -232,7 +255,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     </check>
   </step>
 
-  <step n="4" goal="Mark story in-progress" tag="sprint-status">
+  <step n="5" goal="Mark story in-progress" tag="sprint-status">
     <check if="{{sprint_status}} file exists">
       <action>Load the FULL file: {{sprint_status}}</action>
       <action>Read all development_status entries to find {{story_key}}</action>
@@ -267,7 +290,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     </check>
   </step>
 
-  <step n="5" goal="Implement task following red-green-refactor cycle">
+  <step n="6" goal="Implement task following red-green-refactor cycle">
     <critical>FOLLOW THE STORY FILE TASKS/SUBTASKS SEQUENCE EXACTLY AS WRITTEN - NO DEVIATION</critical>
 
     <action>Review the current task/subtask from the story file - this is your authoritative implementation guide</action>
@@ -298,14 +321,14 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <critical>Do NOT propose to pause for review until Step 9 completion gates are satisfied</critical>
   </step>
 
-  <step n="6" goal="Author comprehensive tests">
+  <step n="7" goal="Author comprehensive tests">
     <action>Create unit tests for business logic and core functionality introduced/changed by the task</action>
     <action>Add integration tests for component interactions specified in story requirements</action>
     <action>Include end-to-end tests for critical user flows when story requirements demand them</action>
     <action>Cover edge cases and error handling scenarios identified in story Dev Notes</action>
   </step>
 
-  <step n="7" goal="Run validations and tests">
+  <step n="8" goal="Run validations and tests">
     <action>Determine how to run tests for this repo (infer test framework from project structure)</action>
     <action>Run all existing tests to ensure no regressions</action>
     <action>Run the new tests to verify implementation correctness</action>
@@ -315,7 +338,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action if="new tests fail">STOP and fix before continuing - ensure implementation correctness</action>
   </step>
 
-  <step n="8" goal="Validate and mark task complete ONLY when fully done">
+  <step n="9" goal="Validate and mark task complete ONLY when fully done">
     <critical>NEVER mark a task complete unless ALL conditions are met - NO LYING OR CHEATING</critical>
 
     <!-- VALIDATION GATES -->
@@ -359,14 +382,14 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action>Save the story file</action>
     <action>Determine if more incomplete tasks remain</action>
     <action if="more tasks remain">
-      <goto step="5">Next task</goto>
+      <goto step="6">Next task</goto>
     </action>
     <action if="no tasks remain">
-      <goto step="9">Completion</goto>
+      <goto step="10">Completion</goto>
     </action>
   </step>
 
-  <step n="9" goal="Story completion and mark for review" tag="sprint-status">
+  <step n="10" goal="Story completion and mark for review" tag="sprint-status">
     <action>Verify ALL tasks and subtasks are marked [x] (re-scan the story document now)</action>
     <action>Run the full regression suite (do not skip)</action>
     <action>Confirm File List includes every changed file</action>
@@ -417,7 +440,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action if="definition-of-done validation fails">HALT - Address DoD failures before completing</action>
   </step>
 
-  <step n="10" goal="Completion communication and user support">
+  <step n="11" goal="Completion communication and user support">
     <action>Execute the enhanced definition-of-done checklist using the validation framework</action>
     <action>Prepare a concise summary in Dev Agent Record → Completion Notes</action>
 
