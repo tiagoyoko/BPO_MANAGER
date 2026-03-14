@@ -1,6 +1,6 @@
 # Story 1.4: Listar e filtrar clientes
 
-Status: review
+Status: done
 
 ## Story
 
@@ -80,6 +80,13 @@ so that **posso localizar rapidamente empresas por nome, CNPJ, status ou tags e 
   - [x] `GET /api/clientes` sem auth: retorna 401.
   - [x] Componente `clientes-filtros.tsx`: debounce do campo busca; limpar filtros; callback `onFiltrosChange`.
   - [x] Regressões: suite completa de 57 testes da story 1.3 continua passando.
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] Ajustar `clientes-list.tsx` para cumprir AC1 com as colunas exigidas: Cliente (nome fantasia + razão social), CNPJ, status, responsável interno e receita estimada. Remover dependência de `email` como coluna principal da lista. [bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx:55]
+- [x] [AI-Review][HIGH] Expor filtro funcional de tags/setor na tela principal carregando `tagsDisponiveis` reais em `clientes-page-client.tsx`/`page.tsx`; hoje o componente suporta tags, mas a página passa `[]` e o filtro nunca aparece. [bpo360-app/src/app/(bpo)/clientes/_components/clientes-page-client.tsx:130]
+- [x] [AI-Review][HIGH] Tornar a linha inteira do cliente navegável para `/clientes/[clienteId]` ou implementar comportamento equivalente que satisfaça AC4; atualmente só duas células têm `Link`. [bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx:65]
+- [x] [AI-Review][MEDIUM] Adicionar testes de interface cobrindo colunas obrigatórias da lista, presença/uso do filtro de tags e navegação ao clicar na linha para evitar regressão dos ACs 1, 3 e 4. [bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.test.tsx:1]
 
 ## Dev Notes
 
@@ -270,6 +277,7 @@ claude-sonnet-4-6
 - Task 3: ClientesPageClient refatorado para estado filtros/page/total/isLoadingClientes, fetch GET /api/clientes ao montar e ao mudar filtros/page; page.tsx passa user e responsaveis (lista de usuários BPO).
 - Task 4: ClientesList com props total, page, limit, onPageChange, isLoadingClientes, filtrosAtivos; controles de paginação; Link em razão social e nome fantasia para /clientes/[id]; mensagens de estado vazio diferenciadas.
 - Task 5: clientes-filtros.test.tsx com 4 testes (onFiltrosChange inicial, debounce, limpar filtros, callback ao mudar status). Suite total 66 testes passando.
+- Code review fixes: lista ajustada para exibir Cliente/Status/Responsável interno/Receita estimada; linha inteira navegável para `/clientes/[clienteId]`; `page.tsx` passou a carregar `tagsDisponiveis` reais do BPO; testes adicionados para colunas, clique na linha e filtro de tags. Suite total 88 testes passando.
 
 ### File List
 
@@ -278,9 +286,12 @@ claude-sonnet-4-6
 - bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.tsx (novo)
 - bpo360-app/src/app/(bpo)/clientes/_components/clientes-filtros.test.tsx (novo)
 - bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-list.test.tsx (novo)
 - bpo360-app/src/app/(bpo)/clientes/_components/clientes-page-client.tsx (alterado)
+- bpo360-app/src/app/(bpo)/clientes/_components/clientes-page-client.test.tsx (novo)
 - bpo360-app/src/app/(bpo)/clientes/page.tsx (alterado)
 
 ## Change Log
 
 - 2026-03-14: Story 1.4 implementada — GET /api/clientes com busca, filtros e paginação; ClientesFiltros; clientes-page-client com fetch e paginação; clientes-list com links e paginação; testes unitários e de componente; 66 testes passando.
+- 2026-03-14: Code review fixes aplicados — colunas obrigatórias da lista, filtro de tags funcional carregado do BPO, navegação pela linha inteira e novos testes de regressão; 88 testes passando.
