@@ -1,6 +1,6 @@
 # Story 2.5: Atribuição em massa de tarefas
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -90,10 +90,12 @@ so that **eu redistribua carga rapidamente**.
 - **Code review (2-5):** Corrigidos 2 HIGH em tarefas-cliente-client.tsx: (1) tarefasPorData/calendarDays/tarefasPorDia movidos acima de idsNaPagina para evitar ReferenceError; (2) estado e memos faltantes (calendarMode, selectedDate, tipo, weeklyRange, weekCells, tiposServico) para view calendário e filtro Tipo. Filtro tipo ligado ao fetch (params).
 - **Code review (2-5) 2026-03-14:** Story revertida para `in-progress`. Pendências HIGH: (1) `responsavelId` ainda aceita `admin_bpo` na API e na fonte de opções da UI, divergindo do AC 4; (2) falha ao gravar `tarefa_historico` não impede contagem de sucesso nem retorna falha por tarefa.
 - **Review follow-ups 2026-03-14:** ✅ Resolvido [HIGH] responsavelId restrito a operador_bpo/gestor_bpo na API (route.ts) e na lista paraAtribuicao=1 (usuarios/route.ts). ✅ Resolvido [HIGH] falha de insert em tarefa_historico tratada como falha da tarefa: não incrementa sucesso, reverte update da tarefa e adiciona em falhas[]; teste adicionado.
+- **Code review 2026-03-14:** Revisão adversarial concluída. AC 1–4 e Tasks 1–5 validados; Follow-ups [AI-Review] já resolvidos. Git vs File List: sem discrepâncias nos arquivos da story. Testes: 9/9 passando. Status → done.
 
 ### Change Log
 
 - Addressed code review findings — 2 items resolved (2026-03-14).
+- Code review 2-5: AC e tasks validados; 0 HIGH/MEDIUM; status done (2026-03-14).
 
 ### File List
 
