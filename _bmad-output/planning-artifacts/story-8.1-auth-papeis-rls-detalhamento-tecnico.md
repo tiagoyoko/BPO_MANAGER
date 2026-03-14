@@ -292,15 +292,15 @@ Documentar no README ou no próprio detalhamento: “Para ambiente local, criar 
 
 ## 9. Checklist de aceite (Story 8.1)
 
-- [ ] Supabase Auth configurado (e-mail/senha ou magic link); login e logout funcionando.
-- [ ] Tabelas `bpos` e `usuarios` criadas com RLS; enum `papel_bpo`; constraint para `cliente_final` ter `cliente_id`.
-- [ ] Funções `get_my_bpo_id()`, `get_my_role()`, `get_my_cliente_id()` criadas e usáveis em políticas RLS.
-- [ ] Cada usuário autenticado associado a um `bpo_id` e um `role` via tabela `usuarios`; `getCurrentUser()` retorna esses dados.
-- [ ] Middleware protege rotas da área BPO; usuário não autenticado é redirecionado para `/login`.
-- [ ] Layout `(bpo)` exige usuário com perfil; redireciona para `/login` ou página de “sem perfil” quando não houver sessão ou linha em `usuarios`.
-- [ ] Papel `cliente_final` restrito ao seu `cliente_id` (documentado e implementado em RLS nas tabelas que tiverem `cliente_id`; para 8.1 pode ser só a política template e a lógica em `canAccessCliente`).
-- [ ] Guards RBAC em `lib/auth/rbac.ts` (ou `lib/rbac.ts`): `canAccessAdmin`, `canManageUsers`, `canAccessCliente`.
-- [ ] Seed ou instruções para criar primeiro BPO e primeiro usuário admin; login como admin e acesso à área BPO validados.
+- [x] Supabase Auth configurado (e-mail/senha ou magic link); login e logout funcionando.
+- [x] Tabelas `bpos` e `usuarios` criadas com RLS; enum `papel_bpo`; constraint para `cliente_final` ter `cliente_id`.
+- [x] Funções `get_my_bpo_id()`, `get_my_role()`, `get_my_cliente_id()` criadas e usáveis em políticas RLS.
+- [x] Cada usuário autenticado associado a um `bpo_id` e um `role` via tabela `usuarios`; `getCurrentUser()` retorna esses dados.
+- [x] Middleware protege rotas da área BPO; usuário não autenticado é redirecionado para `/login`.
+- [x] Layout `(bpo)` exige usuário com perfil; redireciona para `/login` ou página de “sem perfil” quando não houver sessão ou linha em `usuarios`.
+- [x] Papel `cliente_final` restrito ao seu `cliente_id` (documentado e implementado em RLS nas tabelas que tiverem `cliente_id`; para 8.1 pode ser só a política template e a lógica em `canAccessCliente`).
+- [x] Guards RBAC em `lib/auth/rbac.ts` (ou `lib/rbac.ts`): `canAccessAdmin`, `canManageUsers`, `canAccessCliente`.
+- [x] Seed ou instruções para criar primeiro BPO e primeiro usuário admin; login como admin e acesso à área BPO validados.
 
 ---
 

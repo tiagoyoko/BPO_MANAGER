@@ -48,7 +48,7 @@ development_status:
   1-3-editar-dados-e-status-de-cliente: review
   1-4-listar-e-filtrar-clientes: review
   1-5-configurar-erp-principal-f360-por-cliente: ready-for-dev
-  1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: backlog
+  1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: ready-for-dev
   1-7-ver-status-de-configuracao-erp-por-cliente: backlog
   epic-1-retrospective: optional
 
