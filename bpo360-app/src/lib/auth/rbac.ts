@@ -36,3 +36,8 @@ export function canAccessCliente(
   }
   return true;
 }
+
+/** Story 2.5: apenas admin_bpo ou gestor_bpo podem usar atribuição em massa. */
+export function canAssignMass(user: CurrentUser): boolean {
+  return user.role === "admin_bpo" || user.role === "gestor_bpo";
+}

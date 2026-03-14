@@ -38,6 +38,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const tipo = requestUrl.searchParams.get("tipo") ?? "interno";
   const clienteId = requestUrl.searchParams.get("clienteId");
+  const paraAtribuicao = requestUrl.searchParams.get("paraAtribuicao") === "1";
 
   if (!["interno", "cliente"].includes(tipo)) {
     return NextResponse.json(
@@ -67,7 +68,14 @@ export async function GET(request: Request) {
       );
     }
   } else {
-    if (!canManageUsers(user)) {
+    if (paraAtribuicao) {
+      if (!canManageClienteUsers(user)) {
+        return NextResponse.json(
+          { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+          { status: 403 }
+        );
+      }
+    } else if (!canManageUsers(user)) {
       return NextResponse.json(
         { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
         { status: 403 }

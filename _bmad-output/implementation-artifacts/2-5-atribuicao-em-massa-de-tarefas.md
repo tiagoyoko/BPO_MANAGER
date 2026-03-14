@@ -1,6 +1,6 @@
 # Story 2.5: Atribuição em massa de tarefas
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,19 +19,19 @@ so that **eu redistribua carga rapidamente**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 (AC: 1,4)** – API: atribuir responsável em massa
-  - [ ] POST /api/tarefas/atribuir-massa (ou PATCH /api/tarefas com body em massa): body { tarefaIds: string[], responsavelId: string }. Guard: getCurrentUser(); apenas admin_bpo ou gestor_bpo. Validar responsavelId é usuário do mesmo bpo_id (e papel operador_bpo ou gestor_bpo). Para cada tarefaIds: verificar tarefa pertence ao BPO; atualizar tarefas.responsavel_id; registrar em histórico (tarefa_historico ou tabela de auditoria: tarefa_id, campo_alterado 'responsavel_id', valor_anterior, valor_novo, alterado_por_id, alterado_em).
-  - [ ] Resposta: { data: { sucesso: number, falhas: { tarefaId: string, motivo: string }[] }, error: null } 200. Se todas falharem, 400 ou 200 com falhas preenchido.
-- [ ] **Task 2 (AC: 2)** – Tratamento de falhas pontuais
-  - [ ] Ao processar em lote: por tarefa, try/catch ou validação; se falha (ex.: tarefa não encontrada, de outro BPO), adicionar em falhas[] e continuar. Sempre retornar sucesso + falhas para o front exibir "X atribuídas; Y falharam: [lista]".
-- [ ] **Task 3 (AC: 1,3)** – UI: seleção múltipla e ação em massa
-  - [ ] Na lista de tarefas (2-3): checkbox por linha; checkbox "Selecionar todas" (da página atual); toolbar ou barra fixa quando há seleção: "N itens selecionados" + botão "Atribuir responsável". Ao clicar: modal/dropdown para escolher usuário (GET /api/admin/usuarios ou lista de operadores/gestores). Submit → POST /api/tarefas/atribuir-massa. Exibir toast ou banner com resultado (sucesso + eventual lista de falhas).
-- [ ] **Task 4** – Histórico de alteração
-  - [ ] Tabela tarefa_historico (ou equivalente): id, tarefa_id, campo, valor_anterior, valor_novo, usuario_id, created_at. Inserir ao atualizar responsavel_id (em massa ou unitário). Permitir exibir "Alterado por X em DD/MM" no detalhe da tarefa (opcional nesta story).
-- [ ] **Task 5** – Testes
-  - [ ] Atribuir em massa atualiza todas as tarefas do BPO; tarefaIds de outro BPO são rejeitadas (em falhas).
-  - [ ] Gestor pode chamar API; operador recebe 403.
-  - [ ] responsavelId de outro BPO retorna 400 ou falha.
+- [x] **Task 1 (AC: 1,4)** – API: atribuir responsável em massa
+  - [x] POST /api/tarefas/atribuir-massa (ou PATCH /api/tarefas com body em massa): body { tarefaIds: string[], responsavelId: string }. Guard: getCurrentUser(); apenas admin_bpo ou gestor_bpo. Validar responsavelId é usuário do mesmo bpo_id (e papel operador_bpo ou gestor_bpo). Para cada tarefaIds: verificar tarefa pertence ao BPO; atualizar tarefas.responsavel_id; registrar em histórico (tarefa_historico ou tabela de auditoria: tarefa_id, campo_alterado 'responsavel_id', valor_anterior, valor_novo, alterado_por_id, alterado_em).
+  - [x] Resposta: { data: { sucesso: number, falhas: { tarefaId: string, motivo: string }[] }, error: null } 200. Se todas falharem, 400 ou 200 com falhas preenchido.
+- [x] **Task 2 (AC: 2)** – Tratamento de falhas pontuais
+  - [x] Ao processar em lote: por tarefa, try/catch ou validação; se falha (ex.: tarefa não encontrada, de outro BPO), adicionar em falhas[] e continuar. Sempre retornar sucesso + falhas para o front exibir "X atribuídas; Y falharam: [lista]".
+- [x] **Task 3 (AC: 1,3)** – UI: seleção múltipla e ação em massa
+  - [x] Na lista de tarefas (2-3): checkbox por linha; checkbox "Selecionar todas" (da página atual); toolbar ou barra fixa quando há seleção: "N itens selecionados" + botão "Atribuir responsável". Ao clicar: modal/dropdown para escolher usuário (GET /api/admin/usuarios ou lista de operadores/gestores). Submit → POST /api/tarefas/atribuir-massa. Exibir toast ou banner com resultado (sucesso + eventual lista de falhas).
+- [x] **Task 4** – Histórico de alteração
+  - [x] Tabela tarefa_historico (ou equivalente): id, tarefa_id, campo, valor_anterior, valor_novo, usuario_id, created_at. Inserir ao atualizar responsavel_id (em massa ou unitário). Permitir exibir "Alterado por X em DD/MM" no detalhe da tarefa (opcional nesta story).
+- [x] **Task 5** – Testes
+  - [x] Atribuir em massa atualiza todas as tarefas do BPO; tarefaIds de outro BPO são rejeitadas (em falhas).
+  - [x] Gestor pode chamar API; operador recebe 403.
+  - [x] responsavelId de outro BPO retorna 400 ou falha.
 
 ## Dev Notes
 
@@ -78,4 +78,17 @@ so that **eu redistribua carga rapidamente**.
 
 ### Completion Notes List
 
+- Task 1+2: POST /api/tarefas/atribuir-massa com guard canAssignMass (admin/gestor), validação responsavelId mesmo BPO, processamento por tarefa com falhas[] e registro em tarefa_historico.
+- Task 3: Checkbox por linha e "Selecionar todas" (página + por dia) na lista de tarefas do cliente; toolbar com "Atribuir responsável"; modal com select de usuários (GET /api/admin/usuarios?paraAtribuicao=1 para gestor); FeedbackToast com sucesso/falhas.
+- Task 4: Migration 20260314210000_create_tarefa_historico.sql; insert na rota atribuir-massa.
+- Task 5: route.test.ts — 401, 403 operador, gestor/admin 200, 400 body/responsavel outro BPO, tarefa outro BPO em falhas.
+- **Code review (2-5):** Corrigidos 2 HIGH em tarefas-cliente-client.tsx: (1) tarefasPorData/calendarDays/tarefasPorDia movidos acima de idsNaPagina para evitar ReferenceError; (2) estado e memos faltantes (calendarMode, selectedDate, tipo, weeklyRange, weekCells, tiposServico) para view calendário e filtro Tipo. Filtro tipo ligado ao fetch (params).
+
 ### File List
+
+- bpo360-app/src/lib/auth/rbac.ts (canAssignMass)
+- bpo360-app/supabase/migrations/20260314210000_create_tarefa_historico.sql
+- bpo360-app/src/app/api/tarefas/atribuir-massa/route.ts
+- bpo360-app/src/app/api/tarefas/atribuir-massa/route.test.ts
+- bpo360-app/src/app/api/admin/usuarios/route.ts (?paraAtribuicao=1 para gestor listar internos)
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/tarefas/_components/tarefas-cliente-client.tsx (checkbox, toolbar, modal, toast)
