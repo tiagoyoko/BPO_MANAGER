@@ -66,12 +66,12 @@ export async function buscarIntegracaoPrincipal(
   return data ? rowToIntegracaoErp(data) : null;
 }
 
-/** Busca integração F360 do cliente (única por cliente no MVP). */
-export async function buscarIntegracaoF360(
+/** Busca a row bruta da integração F360 (para uso em rotas que precisam de token_f360_encrypted). */
+export async function buscarIntegracaoF360Row(
   supabase: SupabaseClient,
   clienteId: string,
   bpoId: string
-): Promise<IntegracaoErp | null> {
+): Promise<IntegracaoErpRow | null> {
   const { data, error } = await supabase
     .from("integracoes_erp")
     .select(COLS)
@@ -81,6 +81,16 @@ export async function buscarIntegracaoF360(
     .maybeSingle();
 
   if (error) throw error;
+  return data;
+}
+
+/** Busca integração F360 do cliente (única por cliente no MVP). */
+export async function buscarIntegracaoF360(
+  supabase: SupabaseClient,
+  clienteId: string,
+  bpoId: string
+): Promise<IntegracaoErp | null> {
+  const data = await buscarIntegracaoF360Row(supabase, clienteId, bpoId);
   return data ? rowToIntegracaoErp(data) : null;
 }
 

@@ -7,12 +7,12 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
-const AUTH_TAG_LENGTH = 16;
 const KEY_HEX_LENGTH = 64;
+const KEY_HEX_REGEX = /^[0-9a-fA-F]{64}$/;
 
 function getKey(): Buffer {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
-  if (!hex || hex.length !== KEY_HEX_LENGTH) {
+  if (!hex || hex.length !== KEY_HEX_LENGTH || !KEY_HEX_REGEX.test(hex)) {
     throw new Error("TOKEN_ENCRYPTION_KEY inválida ou ausente (deve ter 64 hex chars)");
   }
   return Buffer.from(hex, "hex");

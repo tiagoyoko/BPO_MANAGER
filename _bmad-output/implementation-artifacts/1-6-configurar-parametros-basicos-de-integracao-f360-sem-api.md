@@ -112,6 +112,15 @@ so that **a integração completa possa ser ativada depois (EP4)**.
   - [x] `f360-token-form.test.tsx`: modo display mascarado; toggle para edição; validação token vazio; submit com sucesso; tratamento de erro; modo readonly para `operador_bpo`
   - [x] Regressões: suite completa anterior continua passando
 
+### Review Follow-ups (AI)
+
+- [x] AI-Review (Médio): PUT `/api/clientes/[clienteId]/erp/f360` retorna `tokenMascarado: "••••••••"` em vez de `"••••••••[últimos 4 chars]"` — após salvar, o UI exibe display incompleto até page refresh. Fix: descriptografar o token após update e computar `"••••••••" + plain.slice(-4)` no route handler antes de retornar a resposta. `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.ts:178`
+- [x] AI-Review (Baixo): Constante `AUTH_TAG_LENGTH` declarada mas nunca utilizada em `crypto.ts` — remover para evitar lint warning. `bpo360-app/src/lib/security/crypto.ts:10`
+- [x] AI-Review (Baixo): `operador_bpo` sem token configurado vê campos de input sem botão Salvar (UX ruim) — exibir mensagem "Token não configurado" em modo somente leitura em vez do form vazio. `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/_components/f360-token-form.tsx:110`
+- [x] AI-Review (Baixo): CTA de pré-requisito F360 não é link — AC 5 especifica "link para a seção de ERP"; o texto atual é um `<p>` sem âncora. `bpo360-app/src/app/(bpo)/clientes/[clienteId]/config/page.tsx:65`
+- [x] AI-Review (Baixo): GET route define `COLS` e query Supabase manualmente duplicando lógica de `buscarIntegracaoF360` do repositório — refatorar para usar a função do repositório. `bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/route.ts:15`
+- [x] AI-Review (Baixo): Funções `buscarIntegracaoF360` e `atualizarConfigF360` sem testes unitários em `repository.test.ts`. `bpo360-app/src/lib/domain/integracoes-erp/repository.test.ts`
+
 ## Dev Notes
 
 ### Contexto da story 1.5 (pré-requisito)
@@ -361,7 +370,8 @@ claude-sonnet-4-6
 - API GET/PUT `/api/clientes/[clienteId]/erp/f360`: GET retorna token mascarado (últimos 4 via decrypt server-side); PUT criptografa e persiste; nunca expõe token em JSON; 9 testes em `route.test.ts`.
 - `F360TokenForm`: display mascarado, toggle edição, validação token vazio, FeedbackToast; página config renderiza form só quando F360 existe, senão CTA "Configure o ERP F360 na seção acima". 8 testes em `f360-token-form.test.tsx`.
 - Regressão: 112 testes passando (erp-config-client e integracoes-erp/repository atualizados para novos campos).
-- 2026-03-14 (action items): Nenhum Review Follow-up pendente. DoD revalidado — 112/112 testes; sprint-status 1-6 → review.
+- 2026-03-14 (action items): Resolvidos os 6 Review Follow-ups (AI): PUT retorna tokenMascarado com últimos 4 chars; removido AUTH_TAG_LENGTH; operador_bpo sem token vê "Token não configurado"; CTA pré-requisito como link #erp; GET refatorado para buscarIntegracaoF360Row; testes unitários para buscarIntegracaoF360Row, buscarIntegracaoF360 e atualizarConfigF360. DoD revalidado — 125 testes passando.
+- 2026-03-14 (validação final): Corrigida regressão no mock de `src/app/api/clientes/route.test.ts` para o filtro `erpStatus=config_basica_salva`; `F360TokenForm` passou a consumir `integracaoId` sem alterar comportamento. Revalidação concluída com 127/127 testes passando e lint focado nos arquivos da story sem erros.
 
 ### File List
 
@@ -383,3 +393,5 @@ claude-sonnet-4-6
 ### Change Log
 
 - 2026-03-14: Story 1.6 implementada (migração F360, crypto, tipos/repo, API f360, F360TokenForm, testes). Status → review.
+- 2026-03-14: Action items do code review: PUT token mascarado com últimos 4; crypto.ts sem AUTH_TAG_LENGTH; F360TokenForm operador sem token; CTA link #erp; GET usa buscarIntegracaoF360Row; repository.test com buscarIntegracaoF360/atualizarConfigF360.
+- 2026-03-14: Validação final da story concluída; regressão em `clientes/route.test.ts` corrigida e status mantido em review.

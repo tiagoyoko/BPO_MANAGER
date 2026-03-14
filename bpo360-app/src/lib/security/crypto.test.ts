@@ -49,6 +49,11 @@ describe("crypto", () => {
     expect(() => encrypt("x")).toThrow(/TOKEN_ENCRYPTION_KEY/);
   });
 
+  it("lança quando TOKEN_ENCRYPTION_KEY não é hex válido", () => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "z".repeat(64));
+    expect(() => encrypt("x")).toThrow(/TOKEN_ENCRYPTION_KEY/);
+  });
+
   it("decrypt lança em formato inválido", () => {
     expect(() => decrypt("invalid")).toThrow(/Formato de ciphertext inválido/);
     expect(() => decrypt("a:b")).toThrow(/Formato de ciphertext inválido/);

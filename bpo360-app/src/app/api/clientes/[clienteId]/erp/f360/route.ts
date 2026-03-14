@@ -7,13 +7,17 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { buscarClientePorIdEBpo } from "@/lib/domain/clientes/repository";
 import {
+  buscarIntegracaoF360Row,
   buscarIntegracaoF360,
   atualizarConfigF360,
 } from "@/lib/domain/integracoes-erp/repository";
 import { decrypt, encrypt } from "@/lib/security/crypto";
 
-const COLS =
-  "id, bpo_id, cliente_id, tipo_erp, e_principal, ativo, created_at, updated_at, token_f360_encrypted, observacoes, token_configurado_em";
+function logErroCrypto(contexto: "get" | "put", error: unknown) {
+  console.error(`[f360-config:${contexto}] crypto failure`, {
+    error: error instanceof Error ? error.message : "unknown",
+  });
+}
 
 export async function GET(
   _request: NextRequest,
@@ -48,15 +52,10 @@ export async function GET(
     );
   }
 
-  const { data: row, error } = await supabase
-    .from("integracoes_erp")
-    .select(COLS)
-    .eq("cliente_id", clienteId)
-    .eq("bpo_id", user.bpoId)
-    .eq("tipo_erp", "F360")
-    .maybeSingle();
-
-  if (error) {
+  let row: Awaited<ReturnType<typeof buscarIntegracaoF360Row>>;
+  try {
+    row = await buscarIntegracaoF360Row(supabase, clienteId, user.bpoId);
+  } catch {
     return NextResponse.json(
       { data: null, error: { code: "DB_ERROR", message: "Erro ao processar a solicitação." } },
       { status: 500 }
@@ -74,7 +73,8 @@ export async function GET(
     try {
       const plain = decrypt(row.token_f360_encrypted);
       tokenMascarado = "••••••••" + plain.slice(-4);
-    } catch {
+    } catch (error) {
+      logErroCrypto("get", error);
       return NextResponse.json(
         { data: null, error: { code: "CRYPTO_ERROR", message: "Erro ao processar configuração." } },
         { status: 500 }
@@ -160,7 +160,8 @@ export async function PUT(
   let tokenEncrypted: string;
   try {
     tokenEncrypted = encrypt(token);
-  } catch {
+  } catch (error) {
+    logErroCrypto("put", error);
     return NextResponse.json(
       { data: null, error: { code: "CRYPTO_ERROR", message: "Erro ao salvar configuração." } },
       { status: 500 }
@@ -175,8 +176,10 @@ export async function PUT(
       tokenEncrypted,
       observacoes
     );
-    return NextResponse.json({ data: { integracao: atualizada }, error: null }, { status: 200 });
-  } catch (err) {
+    const tokenMascaradoComUltimos4 = "••••••••" + token.slice(-4);
+    const integracaoResposta = { ...atualizada, tokenMascarado: tokenMascaradoComUltimos4 };
+    return NextResponse.json({ data: { integracao: integracaoResposta }, error: null }, { status: 200 });
+  } catch {
     return NextResponse.json(
       { data: null, error: { code: "DB_ERROR", message: "Erro ao salvar configuração." } },
       { status: 500 }

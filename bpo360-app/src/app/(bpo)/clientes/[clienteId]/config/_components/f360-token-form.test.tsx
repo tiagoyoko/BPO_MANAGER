@@ -144,4 +144,19 @@ describe("F360TokenForm", () => {
     );
     await screen.findByText(/Ambiente homologação/);
   });
+
+  it("operador_bpo sem token configurado vê mensagem somente leitura Token não configurado", () => {
+    render(
+      <F360TokenForm
+        {...defaultProps}
+        userRole="operador_bpo"
+        tokenConfigurado={false}
+        tokenMascarado={null}
+        observacoes={null}
+      />
+    );
+    expect(screen.getByText(/Token não configurado/)).toBeDefined();
+    expect(screen.getByText(/Apenas gestores podem configurar/)).toBeDefined();
+    expect(screen.queryByPlaceholderText(/token gerado no painel F360/i)).toBeNull();
+  });
 });

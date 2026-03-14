@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/auth/get-current-user", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 vi.mock("@/lib/security/crypto", () => ({
   encrypt: vi.fn((plain: string) => `enc:${plain}`),
   decrypt: vi.fn((cipher: string) => (cipher.startsWith("enc:") ? cipher.slice(4) : "abcd")),
@@ -100,6 +101,7 @@ describe("GET /api/clientes/[clienteId]/erp/f360", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(createClient).mockResolvedValue(undefined as never);
+    consoleErrorSpy.mockClear();
   });
 
   it("retorna 401 quando não autenticado", async () => {
@@ -157,12 +159,36 @@ describe("GET /api/clientes/[clienteId]/erp/f360", () => {
     expect(json.data.tokenConfiguradoEm).toBe("2026-03-14T12:00:00Z");
     expect(json.data).not.toHaveProperty("token_f360_encrypted");
   });
+
+  it("retorna 500 e loga erro genérico quando decrypt falha", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const { from } = makeSupabaseGetF360(F360_ROW);
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+    const { decrypt } = await import("@/lib/security/crypto");
+    vi.mocked(decrypt).mockImplementationOnce(() => {
+      throw new Error("decrypt failed");
+    });
+
+    const res = await GET(
+      new Request("http://localhost/api/clientes/cliente-1/erp/f360") as never,
+      { params: Promise.resolve({ clienteId: "cliente-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(json.error.code).toBe("CRYPTO_ERROR");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[f360-config:get] crypto failure",
+      expect.objectContaining({ error: "decrypt failed" })
+    );
+  });
 });
 
 describe("PUT /api/clientes/[clienteId]/erp/f360", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(createClient).mockResolvedValue(undefined as never);
+    consoleErrorSpy.mockClear();
   });
 
   it("retorna 401 quando não autenticado", async () => {
@@ -327,7 +353,52 @@ describe("PUT /api/clientes/[clienteId]/erp/f360", () => {
     expect(json.error).toBeNull();
     expect(json.data.integracao).toBeDefined();
     expect(json.data.integracao.tokenConfigurado).toBe(true);
-    expect(json.data.integracao.tokenMascarado).toBe("••••••••");
+    expect(json.data.integracao.tokenMascarado).toBe("••••••••oken");
     expect(json.data.integracao).not.toHaveProperty("token_f360_encrypted");
+  });
+
+  it("retorna 500 e loga erro genérico quando encrypt falha", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const maybeSingleCliente = vi.fn().mockResolvedValue({ data: CLIENTE_ROW, error: null });
+    const maybeSingleF360 = vi.fn().mockResolvedValue({ data: { ...F360_ROW, token_f360_encrypted: null }, error: null });
+    const from = vi.fn()
+      .mockReturnValueOnce({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleCliente }),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleF360 }),
+            }),
+          }),
+        }),
+      });
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+    const { encrypt } = await import("@/lib/security/crypto");
+    vi.mocked(encrypt).mockImplementationOnce(() => {
+      throw new Error("encrypt failed");
+    });
+
+    const res = await PUT(
+      new Request("http://localhost/api/clientes/cliente-1/erp/f360", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "new-token", observacoes: "Obs" }),
+      }) as never,
+      { params: Promise.resolve({ clienteId: "cliente-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(json.error.code).toBe("CRYPTO_ERROR");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[f360-config:put] crypto failure",
+      expect.objectContaining({ error: "encrypt failed" })
+    );
   });
 });
