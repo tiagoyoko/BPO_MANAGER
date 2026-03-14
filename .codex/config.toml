@@ -1,0 +1,10 @@
+personality = "pragmatic"
+model = "gpt-5.4"
+[projects."/Users/tiagoyokoyama/BPO_MANAGER"]
+trust_level = "trusted"
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"
+
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=xxzmwidazjjhalwcunbx"
