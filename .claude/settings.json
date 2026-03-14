@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git log:*)",
+      "Bash(git -C /Users/tiagoyokoyama/BPO_MANAGER status --short)",
+      "Bash(git -C /Users/tiagoyokoyama/BPO_MANAGER add _bmad-output/implementation-artifacts/1-7-ver-status-de-configuracao-erp-por-cliente.md \"bpo360-app/src/app/api/clientes/[clienteId]/erp/f360/\")",
+      "Bash(git -C /Users/tiagoyokoyama/BPO_MANAGER diff --cached --stat)",
+      "Bash(git -C:*)",
+      "Bash(git diff:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)"
+    ]
+  }
+}
