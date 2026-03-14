@@ -161,7 +161,18 @@ export type TarefaChecklistItem = {
   ordem: number;
   concluido: boolean;
   concluidoPor: string | null;
+  concluidoPorNome?: string | null;
   concluidoEm: string | null;
+};
+
+export type TarefaHistoricoItem = {
+  id: string;
+  itemId: string;
+  itemTitulo: string;
+  acao: "marcar" | "desmarcar";
+  usuarioId: string | null;
+  usuarioNome: string | null;
+  ocorridoEm: string;
 };
 
 /** Detalhe de tarefa (API). */
@@ -179,5 +190,5 @@ export type TarefaDetalhe = {
   atualizadoEm: string;
   checklist: TarefaChecklistItem[];
   comentarios?: unknown[];
-  historico?: unknown[];
+  historico?: TarefaHistoricoItem[];
 };

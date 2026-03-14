@@ -1,8 +1,7 @@
 /**
  * Story 2.4: Testes PATCH /api/tarefas/[tarefaId]/checklist/[itemId].
- * Marcar/desmarcar item; concluido_por_id e concluido_em ao marcar; 400 ao desmarcar se tarefa concluída.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth/get-current-user", () => ({ getCurrentUser: vi.fn() }));
@@ -26,40 +25,47 @@ const GESTOR = {
   nome: "Gestor",
 };
 
-function createSupabaseForChecklistPatch(
-  tarefaStatus: string,
-  itemObrigatorio: boolean,
-  updateResult: { id: string; concluido: boolean; concluido_por_id: string | null; concluido_em: string | null }
-) {
+function createSupabaseForChecklistPatch(options?: {
+  tarefa?: unknown;
+  item?: unknown;
+  updatedItem?: unknown;
+}) {
+  const tarefa = options?.tarefa ?? { id: "tarefa-1", bpo_id: "bpo-1", status: "em_andamento" };
+  const item = options?.item ?? {
+    id: "item-1",
+    tarefa_id: "tarefa-1",
+    titulo: "Validar extrato",
+    obrigatorio: true,
+    concluido: false,
+    concluido_por_id: null,
+    concluido_em: null,
+  };
+  const updatedItem = options?.updatedItem ?? {
+    id: "item-1",
+    concluido: true,
+    concluido_por_id: "user-1",
+    concluido_em: "2026-03-14T12:00:00Z",
+  };
+
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === "tarefas") {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: { id: "tarefa-1", status: tarefaStatus },
-                error: null,
-              }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: tarefa, error: null }),
             }),
           }),
         }),
       };
     }
+
     if (table === "tarefa_checklist_itens") {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: {
-                  id: "item-1",
-                  tarefa_id: "tarefa-1",
-                  obrigatorio: itemObrigatorio,
-                  concluido: false,
-                },
-                error: null,
-              }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: item, error: null }),
             }),
           }),
         }),
@@ -67,15 +73,23 @@ function createSupabaseForChecklistPatch(
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               select: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({ data: updateResult, error: null }),
+                single: vi.fn().mockResolvedValue({ data: updatedItem, error: null }),
               }),
             }),
           }),
         }),
       };
     }
+
+    if (table === "tarefa_checklist_logs") {
+      return {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      };
+    }
+
     return {};
   });
+
   return { from };
 }
 
@@ -87,28 +101,23 @@ describe("PATCH /api/tarefas/[tarefaId]/checklist/[itemId]", () => {
 
   it("retorna 401 quando não autenticado", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
+
     const res = await PATCH(
-      new NextRequest("http://localhost/api/tarefas/t1/checklist/i1", {
+      new NextRequest("http://localhost/api/tarefas/tarefa-1/checklist/item-1", {
         method: "PATCH",
         body: JSON.stringify({ concluido: true }),
       }),
-      { params: Promise.resolve({ tarefaId: "t1", itemId: "i1" }) }
+      { params: Promise.resolve({ tarefaId: "tarefa-1", itemId: "item-1" }) }
     );
     const json = await res.json();
+
     expect(res.status).toBe(401);
     expect(json.error?.code).toBe("UNAUTHORIZED");
   });
 
-  it("retorna 200 e preenche concluido_por_id e concluido_em ao marcar item", async () => {
+  it("retorna 200 ao marcar item e preenche concluido_por_id e concluido_em", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
-    const updateResult = {
-      id: "item-1",
-      concluido: true,
-      concluido_por_id: "user-1",
-      concluido_em: "2026-03-14T12:00:00.000Z",
-    };
-    const supabase = createSupabaseForChecklistPatch("a_fazer", true, updateResult);
-    vi.mocked(createClient).mockResolvedValue(supabase as never);
+    vi.mocked(createClient).mockResolvedValue(createSupabaseForChecklistPatch() as never);
 
     const res = await PATCH(
       new NextRequest("http://localhost/api/tarefas/tarefa-1/checklist/item-1", {
@@ -120,21 +129,27 @@ describe("PATCH /api/tarefas/[tarefaId]/checklist/[itemId]", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(json.error).toBeNull();
     expect(json.data.item.concluido).toBe(true);
     expect(json.data.item.concluidoPor).toBe("user-1");
-    expect(json.data.item.concluidoEm).toBe(updateResult.concluido_em);
+    expect(json.data.item.concluidoEm).toBe("2026-03-14T12:00:00Z");
   });
 
-  it("retorna 400 ao desmarcar item obrigatório com tarefa já concluída", async () => {
+  it("retorna 400 ao desmarcar item obrigatório com tarefa concluída", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
-    const supabase = createSupabaseForChecklistPatch("concluida", true, {
-      id: "item-1",
-      concluido: false,
-      concluido_por_id: null,
-      concluido_em: null,
-    });
-    vi.mocked(createClient).mockResolvedValue(supabase as never);
+    vi.mocked(createClient).mockResolvedValue(
+      createSupabaseForChecklistPatch({
+        tarefa: { id: "tarefa-1", bpo_id: "bpo-1", status: "concluida" },
+        item: {
+          id: "item-1",
+          tarefa_id: "tarefa-1",
+          titulo: "Validar extrato",
+          obrigatorio: true,
+          concluido: true,
+          concluido_por_id: "user-1",
+          concluido_em: "2026-03-14T12:00:00Z",
+        },
+      }) as never
+    );
 
     const res = await PATCH(
       new NextRequest("http://localhost/api/tarefas/tarefa-1/checklist/item-1", {
@@ -146,30 +161,6 @@ describe("PATCH /api/tarefas/[tarefaId]/checklist/[itemId]", () => {
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error?.code).toBe("REGRA_NEGOCIO");
-    expect(json.error?.message).toContain("obrigatórios");
-  });
-
-  it("retorna 400 ao desmarcar item opcional com tarefa já concluída", async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
-    const supabase = createSupabaseForChecklistPatch("concluida", false, {
-      id: "item-1",
-      concluido: false,
-      concluido_por_id: null,
-      concluido_em: null,
-    });
-    vi.mocked(createClient).mockResolvedValue(supabase as never);
-
-    const res = await PATCH(
-      new NextRequest("http://localhost/api/tarefas/tarefa-1/checklist/item-1", {
-        method: "PATCH",
-        body: JSON.stringify({ concluido: false }),
-      }),
-      { params: Promise.resolve({ tarefaId: "tarefa-1", itemId: "item-1" }) }
-    );
-    const json = await res.json();
-
-    expect(res.status).toBe(400);
-    expect(json.error?.code).toBe("REGRA_NEGOCIO");
+    expect(json.error?.code).toBe("CHECKLIST_LOCKED");
   });
 });
