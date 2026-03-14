@@ -1,6 +1,6 @@
 # Story 2.6: Editar configuração de rotinas em massa
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,18 +19,18 @@ so that **eu adapte o plano operacional quando mudar processo ou equipe**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 (AC: 1,3,4)** – API: edição em massa de rotinas_cliente
-  - [ ] PATCH /api/rotinas-cliente/em-massa (ou POST /api/rotinas-cliente/bulk-update): body { rotinaClienteIds: string[], prioridade?: string, responsavelPadraoId?: string, frequencia?: string, dataInicio?: string }. Guard: admin_bpo ou gestor_bpo; validar todas as rotinas são do mesmo bpo_id. Atualizar em lote rotinas_cliente (prioridade, responsavel_padrao_id, frequencia, data_inicio conforme enviado). Não alterar tarefas já existentes; documentar que "próximas gerações" (job ou ao expandir recorrência) usarão os novos valores.
-  - [ ] Resposta: { data: { atualizadas: number, rotinas: { id, ... }[] }, error: null } 200. Ou 400 se algum id inválido.
-- [ ] **Task 2 (AC: 2)** – Resumo antes de confirmar
-  - [ ] GET /api/rotinas-cliente/preview-massa?ids=id1,id2,...&prioridade=alta (ou body em POST): retornar contagem de rotinas que seriam afetadas e lista resumida (id, cliente nome, modelo nome) para exibir "As seguintes N rotinas serão atualizadas: ...". Opcional: se implementar preview, front chama preview depois envia confirmado; senão, front exibe "Você está alterando N rotinas. Confirma?" e envia PATCH.
-  - [ ] Mínimo: na UI, antes de submeter, exibir "N rotinas serão atualizadas. Tarefas já geradas não serão alteradas." e botão Confirmar/Cancelar.
-- [ ] **Task 3 (AC: 1,3)** – UI: lista de rotinas com seleção e ações em massa
-  - [ ] Tela ou aba "Rotinas" (ex.: /rotinas ou /clientes/[id]/rotinas com foco em "rotinas do cliente"): listar rotinas_cliente (cliente nome, modelo nome, data início, frequência, responsável, prioridade). Checkbox por linha; "Selecionar todas"; toolbar "N selecionadas" + dropdown "Ações em massa": "Alterar prioridade", "Alterar responsável", "Alterar frequência", "Alterar data início". Ao escolher ação: modal com novo valor (select ou date); exibir resumo (N rotinas afetadas) e Confirmar. Submit → PATCH /api/rotinas-cliente/em-massa.
-- [ ] **Task 4** – Testes
-  - [ ] PATCH em massa atualiza apenas rotinas do BPO; rotina de outro BPO retorna erro ou é ignorada.
-  - [ ] Gestor/admin podem chamar; operador 403.
-  - [ ] Tarefas existentes não têm responsavel_id ou prioridade alterados pela edição em massa da rotina (apenas rotinas_cliente são atualizadas).
+- [x] **Task 1 (AC: 1,3,4)** – API: edição em massa de rotinas_cliente
+  - [x] PATCH /api/rotinas-cliente/em-massa (ou POST /api/rotinas-cliente/bulk-update): body { rotinaClienteIds: string[], prioridade?: string, responsavelPadraoId?: string, frequencia?: string, dataInicio?: string }. Guard: admin_bpo ou gestor_bpo; validar todas as rotinas são do mesmo bpo_id. Atualizar em lote rotinas_cliente (prioridade, responsavel_padrao_id, frequencia, data_inicio conforme enviado). Não alterar tarefas já existentes; documentar que "próximas gerações" (job ou ao expandir recorrência) usarão os novos valores.
+  - [x] Resposta: { data: { atualizadas: number, rotinas: { id, ... }[] }, error: null } 200. Ou 400 se algum id inválido.
+- [x] **Task 2 (AC: 2)** – Resumo antes de confirmar
+  - [x] GET /api/rotinas-cliente/preview-massa?ids=id1,id2,...&prioridade=alta (ou body em POST): retornar contagem de rotinas que seriam afetadas e lista resumida (id, cliente nome, modelo nome) para exibir "As seguintes N rotinas serão atualizadas: ...". Opcional: se implementar preview, front chama preview depois envia confirmado; senão, front exibe "Você está alterando N rotinas. Confirma?" e envia PATCH.
+  - [x] Mínimo: na UI, antes de submeter, exibir "N rotinas serão atualizadas. Tarefas já geradas não serão alteradas." e botão Confirmar/Cancelar.
+- [x] **Task 3 (AC: 1,3)** – UI: lista de rotinas com seleção e ações em massa
+  - [x] Tela ou aba "Rotinas" (ex.: /rotinas ou /clientes/[id]/rotinas com foco em "rotinas do cliente"): listar rotinas_cliente (cliente nome, modelo nome, data início, frequência, responsável, prioridade). Checkbox por linha; "Selecionar todas"; toolbar "N selecionadas" + dropdown "Ações em massa": "Alterar prioridade", "Alterar responsável", "Alterar frequência", "Alterar data início". Ao escolher ação: modal com novo valor (select ou date); exibir resumo (N rotinas afetadas) e Confirmar. Submit → PATCH /api/rotinas-cliente/em-massa.
+- [x] **Task 4** – Testes
+  - [x] PATCH em massa atualiza apenas rotinas do BPO; rotina de outro BPO retorna erro ou é ignorada.
+  - [x] Gestor/admin podem chamar; operador 403.
+  - [x] Tarefas existentes não têm responsavel_id ou prioridade alterados pela edição em massa da rotina (apenas rotinas_cliente são atualizadas).
 
 ## Dev Notes
 
@@ -67,6 +67,13 @@ so that **eu adapte o plano operacional quando mudar processo ou equipe**.
 
 ---
 
+## Change Log
+
+- 2026-03-14: Implementação completa. API PATCH em-massa e GET preview-massa; UI rotinas com seleção múltipla e ações em massa (prioridade, responsável, frequência, data início); testes cobrindo BPO, 403 operador e ausência de alteração em tarefas.
+- 2026-03-14: Code review corrigiu remoção explícita de `responsavelPadraoId` no PATCH e ajuste da UI para buscar usuários com `paraAtribuicao=1`; adicionados testes de API e componente.
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -77,4 +84,16 @@ so that **eu adapte o plano operacional quando mudar processo ou equipe**.
 
 ### Completion Notes List
 
+- Task 1: PATCH /api/rotinas-cliente/em-massa com canAssignMass (admin/gestor), validação bpo_id e responsavelPadraoId mesmo BPO; atualiza apenas rotinas_cliente.
+- Task 2: GET /api/rotinas-cliente/preview-massa (ids query); UI exibe "N rotina(s) serão atualizadas. Tarefas já geradas não serão alteradas." no modal de ação em massa.
+- Task 3: RotinasClienteSection com tabela, checkbox por linha, "Selecionar todas", toolbar "N selecionadas" + dropdown Ações em massa (prioridade, responsável, frequência, data início), modal com resumo e Confirmar/Cancelar.
+- Task 4: route.test.ts — 401, 403 operador, gestor/admin 200, 400 body/ids vazios/outro BPO/responsavel outro BPO; assert from("tarefas") nunca chamado.
+- Review fix: PATCH aceita `responsavelPadraoId: null` para limpar responsável padrão e a UI passa a buscar usuários via `/api/admin/usuarios?paraAtribuicao=1`, compatível com gestor_bpo.
+
 ### File List
+
+- bpo360-app/src/app/api/rotinas-cliente/em-massa/route.ts
+- bpo360-app/src/app/api/rotinas-cliente/em-massa/route.test.ts
+- bpo360-app/src/app/api/rotinas-cliente/preview-massa/route.ts
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/_components/rotinas-cliente-section.tsx
+- bpo360-app/src/app/(bpo)/clientes/[clienteId]/_components/rotinas-cliente-section.test.tsx
