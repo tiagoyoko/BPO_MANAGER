@@ -17,6 +17,10 @@ const INTEGRACAO_F360: IntegracaoErp = {
   ativo: true,
   createdAt: "2026-03-14T00:00:00Z",
   updatedAt: "2026-03-14T00:00:00Z",
+  tokenConfigurado: false,
+  tokenMascarado: null,
+  observacoes: null,
+  tokenConfiguradoEm: null,
 };
 
 describe("ErpConfigClient", () => {

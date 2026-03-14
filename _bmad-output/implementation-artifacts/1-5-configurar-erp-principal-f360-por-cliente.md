@@ -1,6 +1,6 @@
 # Story 1.5: Configurar ERP principal (F360) por cliente
 
-Status: review
+Status: done
 
 ## Story
 
@@ -99,6 +99,13 @@ so that **o sistema saiba de onde buscar dados e quais integrações ativar**.
 - [x] **Task 6** – Testes de componente e integração
   - [x] `erp-config-client.test.tsx`: renderização com/sem ERPs, modo readonly para `operador_bpo`, envio de formulário, exibição de erro
   - [x] Regressões: garantir que os testes anteriores (stories 1.2, 1.3, 1.4) continuam passando
+
+### Review Follow-ups (AI)
+
+- [ ] AI-Review MEDIUM: `f360/route.test.ts:155` (story 1.6): `tokenMascarado` esperado como `"••••••••1234"` mas `mascararToken()` em `repository.ts` retorna `"••••••••"` fixo sem sufixo → alinhar implementação com expectativa ou vice-versa antes de fazer merge da 1.6. `bpo360-app/src/lib/domain/integracoes-erp/repository.ts:14-17`
+- [ ] AI-Review MEDIUM: `layout.tsx:33`: cast `as { razao_social; nome_fantasia }` bypassa o type system; preferir acessar campos via tipo inferido do Supabase sem `as`. `bpo360-app/src/app/(bpo)/clientes/[clienteId]/layout.tsx:33`
+- [ ] AI-Review LOW: `page.tsx` (Resumo): `getCurrentUser()` chamado redundantemente — o layout pai já redireciona não-autenticados. `bpo360-app/src/app/(bpo)/clientes/[clienteId]/page.tsx:6`
+- [ ] AI-Review LOW: `route.ts POST:134-166`: race condition teórica entre `select existente` e o `upsert` → status 201/200 pode divergir em concorrência alta. Baixo impacto no MVP.
 
 ## Dev Notes
 
