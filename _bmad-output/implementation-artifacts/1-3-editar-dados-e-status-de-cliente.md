@@ -1,6 +1,6 @@
 # Story 1.3: Editar dados e status de cliente
 
-Status: review
+Status: done
 
 <!-- Note: Validation is opcional. Run validate-create-story for quality check before dev-story. -->
 
@@ -282,3 +282,5 @@ src/
 - 2026-03-13: Story 1.3 implementada — PATCH /api/clientes/[clienteId], formulário modo edição, dialog encerramento, botão Editar na lista, testes API e componente.
 - 2026-03-14: Ajustes de review aplicados — trap de foco no dialog, diferenciação de `DB_ERROR` no PATCH e feedback padronizado com toast reutilizável.
 - 2026-03-14: Review follow-ups (AI) — 3 itens resolvidos: receitaEstimada 0 preservado no payload; mensagens DB_ERROR amigáveis + log interno; suite 66 testes validada.
+- 2026-03-14: Code review adversarial — 3 issues médios corrigidos: handleConfirmarEncerramento async+await; validação NaN em receitaEstimada (API); remoção de early-return null em ConfirmarEncerramentoDialog para garantir dialog.close() antes de desmontagem.
+- 2026-03-14: Code review adversarial (2ª rodada) — 1 issue médio + 2 baixos corrigidos: mock de `useRouter` em `clientes-page-client.test.tsx` (teste falhando da story 1.4); acentos corrigidos em `novo-cliente-form.tsx` ("Não foi possível", "As alterações") e `clientes-list.tsx` ("Não informada"). Suite: 88 testes passando.

@@ -13,3 +13,6 @@
 # App build / deps (backup for subdirs)
 bpo360-app/node_modules
 bpo360-app/.next
+bpo360-app/.env.local
+bpo360-app/tsconfig.tsbuildinfo
+bpo360-app/supabase/.temp

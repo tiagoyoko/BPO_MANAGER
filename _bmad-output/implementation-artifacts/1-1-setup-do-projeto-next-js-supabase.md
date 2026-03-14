@@ -1,6 +1,6 @@
 # Story 1.1: Setup do projeto (Next.js + Supabase)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Validação opcional: executar validate-create-story antes de dev-story. -->
 
@@ -19,17 +19,17 @@ so that **a base do app esteja pronta para multi-tenant e integrações**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 (AC: 1)** Inicializar projeto com template oficial
-  - [ ] Executar `npx create-next-app --example with-supabase with-supabase-app` (ou nome do app desejado, ex.: `bpo360-app`).
-  - [ ] Configurar `.env.local` com `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (e variáveis adicionais do exemplo, se houver).
-  - [ ] Verificar que o app sobe com `npm run dev`, com App Router, TypeScript e Tailwind funcionando.
-- [ ] **Task 2 (AC: 2)** Alinhar estrutura de pastas à Arquitetura
-  - [ ] Garantir route groups: `app/(public)/` (ex.: login, auth/callback) e `app/(bpo)/` (áreas autenticadas: clientes, tarefas, foco, integrações, admin, etc.).
-  - [ ] Criar esqueleto de pastas em `lib/`: `lib/supabase/`, `lib/auth/`, `lib/domain/`, `lib/integrations/f360/`, `lib/utils/`, `lib/logging/` (ou equivalente conforme template).
-  - [ ] Garantir que a raiz do app (ou `src/` se o template usar) reflita a estrutura do Architecture Decision Document (seção "Complete Project Directory Structure").
-- [ ] **Task 3 (AC: 1 e 2)** Documentação e verificação
-  - [ ] Atualizar `.env.example` com variáveis necessárias (sem valores sensíveis).
-  - [ ] Confirmar que Supabase (auth e client) está configurado e acessível a partir do app.
+- [x] **Task 1 (AC: 1)** Inicializar projeto com template oficial
+  - [x] Executar `npx create-next-app --example with-supabase with-supabase-app` (ou nome do app desejado, ex.: `bpo360-app`).
+  - [x] Configurar `.env.local` com `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (e variáveis adicionais do exemplo, se houver).
+  - [x] Verificar que o app sobe com `npm run dev`, com App Router, TypeScript e Tailwind funcionando.
+- [x] **Task 2 (AC: 2)** Alinhar estrutura de pastas à Arquitetura
+  - [x] Garantir route groups: `app/(public)/` (ex.: login, auth/callback) e `app/(bpo)/` (áreas autenticadas: clientes, tarefas, foco, integrações, admin, etc.).
+  - [x] Criar esqueleto de pastas em `lib/`: `lib/supabase/`, `lib/auth/`, `lib/domain/`, `lib/integrations/f360/`, `lib/utils/`, `lib/logging/` (ou equivalente conforme template).
+  - [x] Garantir que a raiz do app (ou `src/` se o template usar) reflita a estrutura do Architecture Decision Document (seção "Complete Project Directory Structure").
+- [x] **Task 3 (AC: 1 e 2)** Documentação e verificação
+  - [x] Atualizar `.env.example` com variáveis necessárias (sem valores sensíveis).
+  - [x] Confirmar que Supabase (auth e client) está configurado e acessível a partir do app.
 
 ## Dev Notes
 
@@ -93,7 +93,7 @@ so that **a base do app esteja pronta para multi-tenant e integrações**.
 
 ### Agent Model Used
 
-_(preencher pelo agente de implementação)_
+_(preenchido pós-implementação)_
 
 ### Debug Log References
 
@@ -101,8 +101,39 @@ _(opcional)_
 
 ### Completion Notes List
 
-_(preencher ao concluir)_
+- Projeto criado com `npx create-next-app --example with-supabase bpo360-app`. Estrutura em `src/` com route groups `(public)` e `(bpo)`, client/server Supabase em `src/lib/supabase/`, `.env.example` com placeholders. Build e dev validados.
+- Code review 2026-03-13: `.env.example` corrigido (credenciais reais removidas); pasta `lib/integrations/f360/` criada; story atualizada com File List e tasks [x].
 
 ### File List
 
-_(listar arquivos criados/alterados ao concluir)_
+- `bpo360-app/.env.example`
+- `bpo360-app/.gitignore`
+- `bpo360-app/package.json`
+- `bpo360-app/tsconfig.json`
+- `bpo360-app/next.config.ts`
+- `bpo360-app/postcss.config.mjs`
+- `bpo360-app/tailwind.config.ts`
+- `bpo360-app/eslint.config.mjs`
+- `bpo360-app/proxy.ts`
+- `bpo360-app/supabase/config.toml`
+- `bpo360-app/supabase/migrations/` (pasta; migrações futuras em 8.1)
+- `bpo360-app/src/app/globals.css`
+- `bpo360-app/src/app/layout.tsx`
+- `bpo360-app/src/app/(public)/login/page.tsx`
+- `bpo360-app/src/app/(public)/auth/callback/route.ts`
+- `bpo360-app/src/app/(public)/auth/confirm/route.ts`
+- `bpo360-app/src/app/(public)/auth/error/page.tsx`
+- `bpo360-app/src/app/(public)/auth/error/auth-error-content.tsx`
+- `bpo360-app/src/app/(bpo)/layout.tsx`
+- `bpo360-app/src/app/(bpo)/page.tsx`
+- `bpo360-app/src/lib/supabase/client.ts`
+- `bpo360-app/src/lib/supabase/server.ts`
+- `bpo360-app/src/lib/supabase/proxy.ts`
+- `bpo360-app/src/lib/auth/` (get-current-user.ts, rbac.ts, user-context.tsx)
+- `bpo360-app/src/lib/utils.ts`
+- `bpo360-app/src/lib/domain/` (esqueleto)
+- `bpo360-app/src/lib/integrations/` e `src/lib/integrations/f360/` (esqueleto)
+- `bpo360-app/src/lib/logging/` (esqueleto)
+- `bpo360-app/src/types/domain.ts`
+- `bpo360-app/src/components/**` (login-form, ui/*, etc.)
+- `bpo360-app/src/middleware.ts`
