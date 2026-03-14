@@ -38,6 +38,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const tipo = requestUrl.searchParams.get("tipo") ?? "interno";
   const clienteId = requestUrl.searchParams.get("clienteId");
+  const paraAtribuicao = requestUrl.searchParams.get("paraAtribuicao") === "1";
 
   if (!["interno", "cliente"].includes(tipo)) {
     return NextResponse.json(
@@ -52,12 +53,16 @@ export async function GET(request: Request) {
     .select("id, nome, email, role, cliente_id, created_at, updated_at")
     .eq("bpo_id", user.bpoId);
 
-  const query =
+  let query =
     tipo === "cliente"
       ? clienteId
         ? baseQuery.eq("role", ROLE_CLIENTE_FINAL).eq("cliente_id", clienteId)
         : baseQuery.eq("role", ROLE_CLIENTE_FINAL)
       : baseQuery.neq("role", ROLE_CLIENTE_FINAL);
+
+  if (tipo === "interno" && paraAtribuicao) {
+    query = query.in("role", ["operador_bpo", "gestor_bpo"]);
+  }
 
   if (tipo === "cliente") {
     if (!canManageClienteUsers(user)) {
@@ -67,7 +72,14 @@ export async function GET(request: Request) {
       );
     }
   } else {
-    if (!canManageUsers(user)) {
+    if (paraAtribuicao) {
+      if (!canManageClienteUsers(user)) {
+        return NextResponse.json(
+          { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+          { status: 403 }
+        );
+      }
+    } else if (!canManageUsers(user)) {
       return NextResponse.json(
         { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
         { status: 403 }

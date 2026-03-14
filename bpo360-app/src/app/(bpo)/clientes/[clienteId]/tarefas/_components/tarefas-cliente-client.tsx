@@ -57,6 +57,9 @@ export function TarefasClienteClient({ clienteId }: Props) {
     message?: string;
     variant: "success" | "error";
   }>({ open: false, title: "", variant: "success" });
+  const [calendarMode, setCalendarMode] = useState<"mensal" | "semanal">("mensal");
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [tipo, setTipo] = useState<string>("");
 
   const { dataInicio, dataFim } = useMemo(
     () => getMonthStartEnd(year, month),
@@ -69,11 +72,12 @@ export function TarefasClienteClient({ clienteId }: Props) {
       if (status) params.set("status", status);
       if (responsavelId) params.set("responsavelId", responsavelId);
       if (prioridade) params.set("prioridade", prioridade);
+      if (tipo) params.set("tipo", tipo);
       return fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
         .then((r) => r.json())
         .then((json) => setTarefas(json.data?.tarefas ?? []));
     },
-    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade]
+    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, tipo]
   );
 
   useEffect(() => {
@@ -84,6 +88,75 @@ export function TarefasClienteClient({ clienteId }: Props) {
     });
     return () => { cancelled = true; };
   }, [fetchTarefas, viewMode]);
+
+  const tarefasPorData = useMemo(() => {
+    const map: Record<string, TarefaListItem[]> = {};
+    for (const t of tarefas) {
+      const d = t.dataVencimento;
+      if (!map[d]) map[d] = [];
+      map[d].push(t);
+    }
+    const keys = Object.keys(map).sort();
+    return keys.map((d) => ({ data: d, items: map[d]! }));
+  }, [tarefas]);
+
+  const calendarDays = useMemo(() => {
+    const first = new Date(year, month - 1, 1);
+    const last = new Date(year, month, 0);
+    const startPad = first.getDay();
+    const daysInMonth = last.getDate();
+    const cells: (null | { day: number; dateStr: string })[] = [];
+    for (let i = 0; i < startPad; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      cells.push({ day: d, dateStr });
+    }
+    return cells;
+  }, [year, month]);
+
+  const tarefasPorDia = useMemo(() => {
+    const map: Record<string, TarefaListItem[]> = {};
+    for (const t of tarefas) {
+      if (!map[t.dataVencimento]) map[t.dataVencimento] = [];
+      map[t.dataVencimento].push(t);
+    }
+    return map;
+  }, [tarefas]);
+
+  const weeklyRange = useMemo(() => {
+    const d = new Date(selectedDate);
+    const day = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - day);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return {
+      label: `${start.getDate()} ${start.toLocaleDateString("pt-BR", { month: "short" })} - ${end.getDate()} ${end.toLocaleDateString("pt-BR", { month: "short" })} ${end.getFullYear()}`,
+      start,
+      end,
+    };
+  }, [selectedDate]);
+
+  const weekCells = useMemo(() => {
+    const d = new Date(selectedDate);
+    const day = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - day);
+    return Array.from({ length: 7 }, (_, i) => {
+      const cellDate = new Date(start);
+      cellDate.setDate(start.getDate() + i);
+      const dateStr = cellDate.toISOString().slice(0, 10);
+      return {
+        key: dateStr,
+        label: cellDate.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }),
+      };
+    });
+  }, [selectedDate]);
+
+  const tiposServico = useMemo(
+    () => Array.from(new Set(tarefas.map((t) => t.tipoServico).filter(Boolean))) as string[],
+    [tarefas]
+  );
 
   const idsNaPagina = useMemo(
     () => new Set(tarefasPorData.flatMap(({ items }) => items.map((t) => t.id))),
@@ -168,40 +241,6 @@ export function TarefasClienteClient({ clienteId }: Props) {
       .then((json) => setUsuarios(Array.isArray(json?.data) ? json.data : []))
       .catch(() => setUsuarios([]));
   }, []);
-
-  const tarefasPorData = useMemo(() => {
-    const map: Record<string, TarefaListItem[]> = {};
-    for (const t of tarefas) {
-      const d = t.dataVencimento;
-      if (!map[d]) map[d] = [];
-      map[d].push(t);
-    }
-    const keys = Object.keys(map).sort();
-    return keys.map((d) => ({ data: d, items: map[d]! }));
-  }, [tarefas]);
-
-  const calendarDays = useMemo(() => {
-    const first = new Date(year, month - 1, 1);
-    const last = new Date(year, month, 0);
-    const startPad = first.getDay();
-    const daysInMonth = last.getDate();
-    const cells: (null | { day: number; dateStr: string })[] = [];
-    for (let i = 0; i < startPad; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      cells.push({ day: d, dateStr });
-    }
-    return cells;
-  }, [year, month]);
-
-  const tarefasPorDia = useMemo(() => {
-    const map: Record<string, TarefaListItem[]> = {};
-    for (const t of tarefas) {
-      if (!map[t.dataVencimento]) map[t.dataVencimento] = [];
-      map[t.dataVencimento].push(t);
-    }
-    return map;
-  }, [tarefas]);
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
