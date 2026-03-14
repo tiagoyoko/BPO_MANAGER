@@ -1,6 +1,6 @@
 ---
 name: dev-story
-description: 'Execute story implementation following a context filled story spec file. Use when the user says "dev this story [story file]" or "implement the next story in the sprint plan"'
+description: 'Execute story implementation following a context filled story spec file in an isolated branch/worktree. Use when the user says "dev this story [story file]" or "implement the next story in the sprint plan"'
 ---
 
 # Dev Story Workflow
@@ -15,6 +15,9 @@ description: 'Execute story implementation following a context filled story spec
 - Absolutely DO NOT stop because of "milestones", "significant progress", or "session boundaries". Continue in a single execution until the story is COMPLETE (all ACs satisfied and all tasks/subtasks checked) UNLESS a HALT condition is triggered or the USER gives other instruction.
 - Do NOT schedule a "next session" or request review pauses unless a HALT condition applies. Only Step 6 decides completion.
 - User skill level ({user_skill_level}) affects conversation style ONLY, not code updates.
+- When git is available, MUST execute implementation in a dedicated story branch and isolated worktree
+- Do NOT implement directly in a shared working tree when git worktree support is available
+- Do NOT merge into default branch in this workflow
 
 ---
 
@@ -56,6 +59,9 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     other instruction.</critical>
   <critical>Do NOT schedule a "next session" or request review pauses unless a HALT condition applies. Only Step 6 decides completion.</critical>
   <critical>User skill level ({user_skill_level}) affects conversation style ONLY, not code updates.</critical>
+  <critical>When git is available, all implementation work MUST run in a dedicated story branch and isolated worktree.</critical>
+  <critical>Do NOT implement directly in a shared working tree when git worktree support is available.</critical>
+  <critical>Do NOT merge to main/master/default branch in this workflow.</critical>
 
   <step n="1" goal="Find next ready story and load it" tag="sprint-status">
     <check if="{{story_path}} is provided">
@@ -173,30 +179,48 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action>Identify first incomplete task (unchecked [ ]) in Tasks/Subtasks</action>
 
     <action if="no incomplete tasks">
-      <goto step="7">Completion sequence</goto>
+      <goto step="8">Completion sequence</goto>
     </action>
     <action if="story file inaccessible">HALT: "Cannot develop story without access to story file"</action>
     <action if="incomplete task or subtask requirements ambiguous">ASK user to clarify or HALT</action>
   </step>
 
-  <step n="2" goal="Create feature branch and isolated worktree before development" tag="git">
-    <critical>Always create or reuse a story branch and a dedicated git worktree so implementation is isolated, resumable, and mergeable</critical>
+  <step n="2" goal="Create or reuse isolated story branch and worktree" tag="git">
+    <critical>Always create or reuse a story branch and a dedicated git worktree so implementation is isolated, resumable, and does not impact other agents</critical>
     <critical>When git is available, do not implement directly in the user's currently-open working tree</critical>
 
     <action>Check if repository root is a git repository (e.g. .git exists or git status succeeds)</action>
 
     <check if="not a git repository">
       <output>ℹ️ Not a git repository — skipping branch/worktree creation</output>
+      <action>Set {{story_branch}} = ""</action>
+      <action>Set {{worktree_path}} = ""</action>
       <action>Continue to next step</action>
     </check>
 
     <check if="is a git repository">
-      <action>Derive branch name from {{story_key}}: use pattern `story/{{story_key}}` (e.g. story/1-7-ver-status-de-configuracao-erp-por-cliente). Replace spaces or invalid characters with hyphens; keep only one hyphen between segments.</action>
-      <action>Determine default branch (`origin/HEAD` → main/master fallback) and current branch for context.</action>
-      <action>Create the story branch if it does not exist: `git checkout -b story/{{story_key}}` from the appropriate base branch. If it already exists, reuse it.</action>
-      <action>Derive a dedicated worktree path for the story branch (for example in `/tmp/` or another project-safe temporary location).</action>
-      <action>If a worktree for `story/{{story_key}}` already exists, reuse it. Otherwise create it with `git worktree add {worktree_path} story/{{story_key}}`.</action>
-      <action>Run all subsequent development steps from the story worktree path, not from the original working tree.</action>
+      <action>Determine repository root</action>
+      <action>Derive branch name from {{story_key}} using pattern `story/{{story_key}}`</action>
+      <action>Normalize invalid branch characters to hyphens and collapse repeated separators</action>
+      <action>Determine default branch (`origin/HEAD` → main/master fallback) and current branch for context</action>
+      <action>Derive a dedicated worktree path for the story branch (for example under a project-safe `.worktrees/{{story_key}}` location or other repo-safe isolated path)</action>
+
+      <action>Check whether branch `story/{{story_key}}` already exists</action>
+      <check if="branch does NOT exist">
+        <action>Create branch `story/{{story_key}}` from the appropriate base branch</action>
+      </check>
+
+      <action>Check whether a worktree for `story/{{story_key}}` already exists</action>
+      <check if="worktree does NOT exist">
+        <action>Create dedicated worktree with `git worktree add {{worktree_path}} story/{{story_key}}`</action>
+      </check>
+
+      <check if="worktree already exists">
+        <action>Reuse existing worktree path for `story/{{story_key}}`</action>
+      </check>
+
+      <critical>All subsequent implementation, tests, validations, and git operations MUST run from {{worktree_path}}</critical>
+
       <output>🌿 **Branch:** story/{{story_key}}
         🗂️ **Worktree:** {{worktree_path}}
         Development will run in the isolated story worktree.
@@ -296,6 +320,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 
   <step n="6" goal="Implement task following red-green-refactor cycle">
     <critical>FOLLOW THE STORY FILE TASKS/SUBTASKS SEQUENCE EXACTLY AS WRITTEN - NO DEVIATION</critical>
+    <critical>When git is available, all file changes and validations in this step MUST occur inside {{worktree_path}}</critical>
 
     <action>Review the current task/subtask from the story file - this is your authoritative implementation guide</action>
     <action>Plan implementation following red-green-refactor cycle</action>
@@ -444,13 +469,32 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     <action if="definition-of-done validation fails">HALT - Address DoD failures before completing</action>
   </step>
 
-  <step n="11" goal="Completion communication and user support">
+  <step n="11" goal="Commit isolated story branch and communicate completion" tag="git">
+    <check if="git repository exists">
+      <action>Run final git status from {{worktree_path}}</action>
+      <action>Stage story-related changes from the isolated worktree</action>
+      <action>Commit with message: `Story {{story_key}}: implementation complete`</action>
+      <action if="commit fails (e.g. pre-commit hook or unresolved git state)">HALT: "Commit failed in isolated story branch. Resolve the git issue and retry."</action>
+      <output>✅ Changes committed in isolated story branch: story/{{story_key}}</output>
+    </check>
+
+    <check if="git repository does NOT exist">
+      <output>ℹ️ No git repository detected - skipping commit step</output>
+    </check>
+
     <action>Execute the enhanced definition-of-done checklist using the validation framework</action>
     <action>Prepare a concise summary in Dev Agent Record → Completion Notes</action>
 
     <action>Communicate to {user_name} that story implementation is complete and ready for review</action>
     <action>Summarize key accomplishments: story ID, story key, title, key changes made, tests added, files modified</action>
     <action>Provide the story file path and current status (now "review")</action>
+
+    <check if="git repository exists">
+      <action>Provide isolation details:
+        - Branch: story/{{story_key}}
+        - Worktree: {{worktree_path}}
+      </action>
+    </check>
 
     <action>Based on {user_skill_level}, ask if user needs any explanations about:
       - What was implemented and how it works
@@ -475,6 +519,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
     </action>
 
     <output>💡 **Tip:** For best results, run `code-review` using a **different** LLM than the one that implemented this story.</output>
+    <output>💡 **Important:** No merge was performed in this workflow. Merge/integration should happen in a separate finalize flow.</output>
     <check if="{sprint_status} file exists">
       <action>Suggest checking {sprint_status} to see project progress</action>
     </check>

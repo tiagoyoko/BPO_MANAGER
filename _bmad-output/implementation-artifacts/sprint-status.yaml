@@ -1,5 +1,5 @@
 # generated: 2026-03-13
-# last_updated: 2026-03-14  # Story 2-5 implementada
+# last_updated: 2026-03-14  # Story 2-6 revisada e concluida
 # project: BPO_MANAGER
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 2-4 e 2-5 done; 2-6 em review
+last_updated: "2026-03-14"  # 2-4, 2-5 e 2-6 done
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -58,7 +58,7 @@ development_status:
   2-3-visualizar-e-gerenciar-tarefas-em-calendario-lista: done
   2-4-executar-checklist-de-uma-tarefa: done
   2-5-atribuicao-em-massa-de-tarefas: done
-  2-6-editar-configuracao-de-rotinas-em-massa: review
+  2-6-editar-configuracao-de-rotinas-em-massa: done
   epic-2-retrospective: optional
 
   epic-3: backlog
