@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { TarefaDetalhe } from "@/lib/domain/rotinas/types";
@@ -28,7 +29,9 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
   const [tarefa, setTarefa] = useState<TarefaDetalhe | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [pendingChecklistItemId, setPendingChecklistItemId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [highlightedMissingIds, setHighlightedMissingIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +40,7 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
       .then((json) => {
         if (cancelled) return;
         setTarefa(json.data ?? null);
+        setHighlightedMissingIds([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -48,6 +52,11 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
     if (!tarefa) return;
     setUpdating(true);
     setFeedback(null);
+    if (novoStatus === "concluida") {
+      setHighlightedMissingIds(
+        tarefa.checklist.filter((item) => item.obrigatorio && !item.concluido).map((item) => item.id)
+      );
+    }
     try {
       const res = await fetch(`/api/tarefas/${tarefaId}`, {
         method: "PATCH",
@@ -57,6 +66,7 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
       const json = await res.json();
       if (res.ok && json.data) {
         setTarefa((prev) => (prev ? { ...prev, status: json.data.status } : null));
+        setHighlightedMissingIds([]);
         setFeedback("Status atualizado.");
       } else {
         setFeedback(json.error?.message ?? "Erro ao atualizar.");
@@ -67,6 +77,67 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
       setUpdating(false);
     }
   }
+
+  async function toggleChecklistItem(itemId: string, concluido: boolean) {
+    if (!tarefa) return;
+
+    setPendingChecklistItemId(itemId);
+    setFeedback(null);
+
+    try {
+      const res = await fetch(`/api/tarefas/${tarefaId}/checklist/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concluido }),
+      });
+      const json = await res.json();
+
+      if (res.ok && json.data?.item) {
+        setTarefa((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            checklist: prev.checklist.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    concluido: json.data.item.concluido,
+                    concluidoPor: json.data.item.concluidoPor,
+                    concluidoPorNome: json.data.item.concluidoPorNome,
+                    concluidoEm: json.data.item.concluidoEm,
+                  }
+                : item
+            ),
+            historico: [
+              {
+                id: `${itemId}-${Date.now()}`,
+                itemId,
+                itemTitulo: prev.checklist.find((item) => item.id === itemId)?.titulo ?? "Item",
+                acao: concluido ? "marcar" : "desmarcar",
+                usuarioId: json.data.item.concluidoPor ?? prev.historico?.[0]?.usuarioId ?? null,
+                usuarioNome:
+                  json.data.item.concluidoPorNome ?? (!concluido ? "Você" : prev.historico?.[0]?.usuarioNome ?? null),
+                ocorridoEm: json.data.item.concluidoEm ?? new Date().toISOString(),
+              },
+              ...(prev.historico ?? []),
+            ],
+          };
+        });
+        setHighlightedMissingIds((prev) => prev.filter((id) => id !== itemId));
+      } else {
+        setFeedback(json.error?.message ?? "Erro ao atualizar checklist.");
+      }
+    } catch {
+      setFeedback("Erro ao atualizar checklist.");
+    } finally {
+      setPendingChecklistItemId(null);
+    }
+  }
+
+  const itensObrigatoriosPendentes =
+    tarefa?.checklist.filter((item) => item.obrigatorio && !item.concluido).map((item) => item.id) ?? [];
+  const todosObrigatoriosConcluidos = itensObrigatoriosPendentes.length === 0;
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -140,31 +211,57 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
                 {tarefa.checklist.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-start gap-2 text-sm"
+                    className={`rounded-md border px-3 py-2 text-sm ${
+                      highlightedMissingIds.includes(item.id) ? "border-destructive bg-destructive/5" : "border-border"
+                    }`}
                   >
-                    <span
-                      className="flex-shrink-0 mt-0.5"
-                      aria-hidden
-                    >
-                      {item.concluido ? "✓" : "○"}
-                    </span>
-                    <span className={item.concluido ? "text-muted-foreground line-through" : ""}>
-                      {item.titulo}
-                      {item.descricao && (
-                        <span className="block text-muted-foreground text-xs">
-                          {item.descricao}
+                    <label className="flex items-start gap-3">
+                      <Checkbox
+                        checked={item.concluido}
+                        disabled={
+                          updating ||
+                          pendingChecklistItemId === item.id ||
+                          tarefa.status === "concluida"
+                        }
+                        onCheckedChange={(checked) => toggleChecklistItem(item.id, checked === true)}
+                        aria-label={`Marcar ${item.titulo}`}
+                        className="mt-0.5"
+                      />
+                      <span className={item.concluido ? "text-muted-foreground line-through" : ""}>
+                        <span className="font-medium">
+                          {item.titulo}
+                          {item.obrigatorio ? " • Obrigatório" : " • Opcional"}
                         </span>
-                      )}
-                      {item.concluidoEm && (
-                        <span className="block text-xs text-muted-foreground">
-                          Concluído em{" "}
-                          {new Date(item.concluidoEm).toLocaleString("pt-BR")}
-                        </span>
-                      )}
-                    </span>
+                        {item.descricao && (
+                          <span className="block text-muted-foreground text-xs">
+                            {item.descricao}
+                          </span>
+                        )}
+                        {item.concluidoEm && (
+                          <span className="block text-xs text-muted-foreground">
+                            Concluído por {item.concluidoPorNome ?? item.concluidoPor ?? "usuário"} em{" "}
+                            {new Date(item.concluidoEm).toLocaleString("pt-BR")}
+                          </span>
+                        )}
+                      </span>
+                    </label>
                   </li>
                 ))}
               </ul>
+            )}
+            {tarefa.status !== "concluida" && (
+              <div className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground">
+                  {todosObrigatoriosConcluidos
+                    ? "Todos os itens obrigatórios foram concluídos. Você já pode marcar a tarefa como concluída."
+                    : "Conclua todos os itens obrigatórios para liberar a conclusão da tarefa."}
+                </p>
+                <div>
+                  <Button type="button" onClick={() => alterarStatus("concluida")} disabled={updating}>
+                    Marcar tarefa como concluída
+                  </Button>
+                </div>
+              </div>
             )}
           </section>
 
@@ -183,8 +280,11 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
               <p className="text-sm text-muted-foreground">Nenhum registro.</p>
             ) : (
               <ul className="text-sm space-y-1">
-                {tarefa.historico.map((h, i) => (
-                  <li key={i}>{String(h)}</li>
+                {tarefa.historico.map((h) => (
+                  <li key={h.id}>
+                    {h.usuarioNome ?? "Usuário"} {h.acao === "marcar" ? "marcou" : "desmarcou"} "{h.itemTitulo}" em{" "}
+                    {new Date(h.ocorridoEm).toLocaleString("pt-BR")}
+                  </li>
                 ))}
               </ul>
             )}

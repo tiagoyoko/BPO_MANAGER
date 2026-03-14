@@ -47,14 +47,28 @@ const CHECKLIST_ROWS = [
     descricao: null,
     obrigatorio: true,
     ordem: 0,
-    concluido: false,
-    concluido_por_id: null,
-    concluido_em: null,
+    concluido: true,
+    concluido_por_id: "u1",
+    concluido_em: "2026-03-14T11:00:00Z",
   },
 ];
 
-function createSupabaseForGetTarefa(tarefa: unknown = TAREFA_ROW, checklist: unknown[] = CHECKLIST_ROWS) {
-  const single = vi.fn().mockResolvedValue({ data: tarefa, error: null });
+const HISTORICO_ROWS = [
+  {
+    id: "log-1",
+    tarefa_checklist_item_id: "ci1",
+    acao: "marcar" as const,
+    usuario_id: "u1",
+    ocorrido_em: "2026-03-14T11:00:00Z",
+    item: { titulo: "Item 1" },
+  },
+];
+
+function createSupabaseForGetTarefa(
+  tarefa: unknown = TAREFA_ROW,
+  checklist: unknown[] = CHECKLIST_ROWS,
+  historico: unknown[] = HISTORICO_ROWS
+) {
   const maybeSingle = vi.fn().mockResolvedValue({ data: tarefa, error: null });
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === "tarefa_checklist_itens") {
@@ -66,9 +80,22 @@ function createSupabaseForGetTarefa(tarefa: unknown = TAREFA_ROW, checklist: unk
         }),
       };
     }
+    if (table === "tarefa_checklist_logs") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: historico, error: null }),
+          }),
+        }),
+      };
+    }
     if (table === "usuarios") {
       return {
         select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({
+            data: [{ id: "u1", nome: "Operador" }],
+            error: null,
+          }),
           eq: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({ data: { nome: "Operador" }, error: null }),
           }),
@@ -84,12 +111,34 @@ function createSupabaseForGetTarefa(tarefa: unknown = TAREFA_ROW, checklist: unk
   return { from };
 }
 
-function createSupabaseForPatch(updated: unknown = { ...TAREFA_ROW, status: "em_andamento" }) {
+function createSupabaseForPatch(options?: {
+  updated?: unknown;
+  checklistObrigatorio?: Array<{ id: string; concluido: boolean }>;
+}) {
+  const updated = options?.updated ?? { ...TAREFA_ROW, status: "em_andamento" };
+  const checklistObrigatorio = options?.checklistObrigatorio ?? [{ id: "ci1", concluido: true }];
   const single = vi.fn().mockResolvedValue({ data: updated, error: null });
-  const update = vi.fn().mockReturnValue({
-    eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "tarefa_checklist_itens") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: checklistObrigatorio, error: null }),
+          }),
+        }),
+      };
+    }
+
+    return {
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({ single }),
+          }),
+        }),
+      }),
+    };
   });
-  const from = vi.fn().mockReturnValue({ update });
   return { from };
 }
 
@@ -157,8 +206,10 @@ describe("GET /api/tarefas/[tarefaId]", () => {
     expect(json.data.titulo).toBe("Conferir conciliação");
     expect(json.data.checklist).toHaveLength(1);
     expect(json.data.checklist[0].titulo).toBe("Item 1");
+    expect(json.data.checklist[0].concluidoPorNome).toBe("Operador");
     expect(json.data.comentarios).toEqual([]);
-    expect(json.data.historico).toEqual([]);
+    expect(json.data.historico).toHaveLength(1);
+    expect(json.data.historico[0].acao).toBe("marcar");
   });
 });
 
@@ -214,5 +265,46 @@ describe("PATCH /api/tarefas/[tarefaId]", () => {
     expect(res.status).toBe(200);
     expect(json.error).toBeNull();
     expect(json.data.status).toBe("em_andamento");
+  });
+
+  it("retorna 400 ao concluir tarefa com obrigatório do checklist não marcado", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const supabase = createSupabaseForPatch({
+      checklistObrigatorio: [{ id: "ci1", concluido: false }],
+    });
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "concluida" }),
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error?.code).toBe("CHECKLIST_INCOMPLETO");
+  });
+
+  it("retorna 200 ao concluir tarefa com todos obrigatórios marcados", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const supabase = createSupabaseForPatch({
+      updated: { ...TAREFA_ROW, status: "concluida" },
+      checklistObrigatorio: [{ id: "ci1", concluido: true }],
+    });
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "concluida" }),
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.status).toBe("concluida");
   });
 });
