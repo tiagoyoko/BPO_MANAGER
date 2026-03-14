@@ -18,6 +18,9 @@ description: 'Perform adversarial code review finding specific issues. Use when 
 - Tasks marked complete but not done = CRITICAL finding
 - Acceptance Criteria not implemented = HIGH severity finding
 - Do not review files that are not part of the application's source code. Always exclude the `_bmad/` and `_bmad-output/` folders from the review. Always exclude IDE and CLI configuration folders like `.cursor/` and `.windsurf/` and `.claude/`
+- When git is available, review and completion git operations MUST run against the isolated story branch/worktree when available
+- When story status becomes `done`, push and merge are mandatory
+- Do not skip push/merge when `done` unless this is not a git repository or a git failure blocks completion
 
 ---
 
@@ -60,13 +63,29 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 <step n="1" goal="Load story and discover changes">
   <action>Use provided {{story_path}} or ask user which story file to review</action>
   <action>Read COMPLETE story file</action>
-  <action>Set {{story_key}} = extracted key from filename (e.g., "1-2-user-authentication.md" → "1-2-user-authentication") or story
-    metadata</action>
+  <action>Set {{story_key}} = extracted key from filename (e.g., "1-2-user-authentication.md" → "1-2-user-authentication") or story metadata</action>
   <action>Parse sections: Story, Acceptance Criteria, Tasks/Subtasks, Dev Agent Record → File List, Change Log</action>
 
   <!-- Discover actual changes via git -->
   <action>Check if git repository detected in current directory</action>
   <check if="git repository exists">
+    <action>Determine repository root</action>
+    <action>Derive story branch name from {{story_key}} using pattern `story/{{story_key}}`</action>
+    <action>Normalize invalid branch characters to hyphens and collapse repeated separators</action>
+    <action>Check whether a worktree exists for `story/{{story_key}}`</action>
+
+    <check if="isolated story worktree exists">
+      <action>Set {{review_worktree_path}} to the existing worktree path for `story/{{story_key}}`</action>
+      <output>🌿 Using isolated story worktree for review: {{review_worktree_path}}</output>
+    </check>
+
+    <check if="isolated story worktree does NOT exist">
+      <action>Set {{review_worktree_path}} = current working directory</action>
+      <output>ℹ️ No dedicated story worktree detected - reviewing from current working tree</output>
+    </check>
+
+    <critical>All subsequent git inspection, review fixes, validation, commit, push, and merge actions MUST run against {{review_worktree_path}} when it is available</critical>
+
     <action>Run `git status --porcelain` to find uncommitted changes</action>
     <action>Run `git diff --name-only` to see modified files</action>
     <action>Run `git diff --cached --name-only` to see staged files</action>
@@ -265,47 +284,64 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
   </output>
 </step>
 
-<step n="6" goal="Commit and merge when story is fully done" tag="git">
-  <critical>When story status is `done`, commit and merge are mandatory. Do not end the workflow before attempting both.</critical>
-  <critical>Only skip git actions if this is not a git repository. If commit or merge fails, report the failure clearly and halt for user intervention.</critical>
+<step n="6" goal="Commit, push, and merge when story is fully done" tag="git">
+  <critical>When story status is `done`, commit, push, and merge are mandatory. Do not end the workflow before attempting all required git actions.</critical>
+  <critical>Only skip git actions if this is not a git repository. If commit, push, or merge fails, report the failure clearly and halt for user intervention.</critical>
 
   <check if="{{new_status}} != 'done'">
-    <action>Skip this step — story not done, no commit/merge</action>
+    <action>Skip this step — story not done, no commit/push/merge</action>
   </check>
 
   <check if="{{new_status}} == 'done'">
     <action>Check if repository root is a git repository</action>
 
     <check if="not a git repository">
-      <output>ℹ️ Not a git repository — skipping commit and merge</output>
+      <output>ℹ️ Not a git repository — skipping commit, push, and merge</output>
     </check>
 
     <check if="is a git repository">
-      <action>Run `git status --porcelain` to see if there are uncommitted changes</action>
+      <action>Run `git status --porcelain` in {{review_worktree_path}} to see if there are uncommitted changes</action>
 
       <check if="there are uncommitted changes">
         <action>Stage the story changes required to complete the workflow. Prefer story-related paths and workflow-updated artifacts when possible; if the repo practice is to commit all current changes for the completed story, stage them explicitly.</action>
         <action>Commit with message: `Story {{story_key}}: review complete, status done`</action>
         <action>If commit fails (e.g. pre-commit hook), output error and HALT so user can resolve</action>
-        <output>✅ **Commit:** changes committed on current branch</output>
+        <output>✅ **Commit:** changes committed on story branch</output>
       </check>
 
       <check if="no uncommitted changes">
         <output>ℹ️ Working tree clean — nothing to commit</output>
       </check>
 
-      <action>Get current branch: `git branch --show-current` and store as {{current_branch}}</action>
+      <action>Get current branch from {{review_worktree_path}}: `git branch --show-current` and store as {{current_branch}}</action>
       <action>Detect default branch: `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null` (e.g. refs/remotes/origin/main → main) or assume `main`; fallback `master` → {{default_branch}}</action>
 
+      <check if="current_branch is empty">
+        <action>HALT: "Could not determine current git branch for review/merge workflow."</action>
+      </check>
+
+      <action>Push current story branch: `git push -u origin {{current_branch}}`</action>
+      <action>If push fails, output error and HALT so user can resolve</action>
+      <output>✅ **Push:** {{current_branch}} pushed to origin</output>
+
       <check if="current_branch equals default_branch (e.g. already on main)">
-        <output>ℹ️ Already on default branch ({{current_branch}}) — commit completed and no merge is required</output>
+        <action>Push default branch: `git push origin {{default_branch}}`</action>
+        <action>If push fails, output error and HALT so user can resolve</action>
+        <output>ℹ️ Already on default branch ({{current_branch}}) — no merge required</output>
+        <output>✅ **Push:** {{default_branch}} pushed to origin</output>
       </check>
 
       <check if="current_branch does not equal default_branch">
+        <action>Fetch latest refs: `git fetch origin`</action>
         <action>Checkout default branch: `git checkout {{default_branch}}`</action>
+        <action>Pull latest default branch state: `git pull --ff-only origin {{default_branch}}`</action>
+        <action>If pull fails, output error and HALT so user can resolve</action>
         <action>Merge story branch into default: `git merge {{current_branch}} --no-edit`</action>
         <action>If merge fails (e.g. conflicts), output error and HALT so user can resolve</action>
-        <output>✅ **Merge:** {{current_branch}} merged into {{default_branch}}. Story is complete and integrated.</output>
+        <action>Push merged default branch: `git push origin {{default_branch}}`</action>
+        <action>If push fails, output error and HALT so user can resolve</action>
+        <output>✅ **Merge:** {{current_branch}} merged into {{default_branch}}</output>
+        <output>✅ **Push:** {{default_branch}} pushed to origin</output>
       </check>
     </check>
   </check>
