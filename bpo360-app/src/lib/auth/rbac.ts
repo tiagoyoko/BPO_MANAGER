@@ -5,12 +5,23 @@ import type { CurrentUser } from "@/types/domain";
  * Story 8.1 – isolamento por papel e cliente_final.
  */
 
+/** Papéis que podem acessar a biblioteca de modelos de rotina (Story 2.1). */
+export const ROLES_MODELOS = ["admin_bpo", "gestor_bpo", "operador_bpo"] as const;
+
+export function canAccessModelos(user: CurrentUser): boolean {
+  return ROLES_MODELOS.includes(user.role as (typeof ROLES_MODELOS)[number]);
+}
+
 export function canAccessAdmin(user: CurrentUser): boolean {
   return user.role === "admin_bpo";
 }
 
 export function canManageUsers(user: CurrentUser): boolean {
   return user.role === "admin_bpo";
+}
+
+export function canManageClienteUsers(user: CurrentUser): boolean {
+  return user.role === "admin_bpo" || user.role === "gestor_bpo";
 }
 
 /**

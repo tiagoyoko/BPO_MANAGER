@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   canAccessAdmin,
   canManageUsers,
+  canManageClienteUsers,
   canAccessCliente,
 } from "./rbac";
 import type { CurrentUser } from "@/types/domain";
@@ -32,6 +33,15 @@ describe("rbac", () => {
     it("retorna true apenas para admin_bpo", () => {
       expect(canManageUsers(user({ role: "admin_bpo" }))).toBe(true);
       expect(canManageUsers(user({ role: "gestor_bpo" }))).toBe(false);
+    });
+  });
+
+  describe("canManageClienteUsers", () => {
+    it("retorna true para admin_bpo e gestor_bpo", () => {
+      expect(canManageClienteUsers(user({ role: "admin_bpo" }))).toBe(true);
+      expect(canManageClienteUsers(user({ role: "gestor_bpo" }))).toBe(true);
+      expect(canManageClienteUsers(user({ role: "operador_bpo" }))).toBe(false);
+      expect(canManageClienteUsers(user({ role: "cliente_final" }))).toBe(false);
     });
   });
 

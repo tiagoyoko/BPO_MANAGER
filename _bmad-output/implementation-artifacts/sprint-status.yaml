@@ -35,30 +35,30 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 1-7 code review concluído, status → done
+last_updated: "2026-03-14"  # Epic 2: stories 2-2 a 2-6 context criado → ready-for-dev
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-setup-do-projeto-next-js-supabase: done
   1-2-cadastrar-cliente-de-bpo: done
   1-3-editar-dados-e-status-de-cliente: done
   1-4-listar-e-filtrar-clientes: done
   1-5-configurar-erp-principal-f360-por-cliente: done
-  1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: review
+  1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: done
   1-7-ver-status-de-configuracao-erp-por-cliente: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-criar-modelo-de-rotina-padrao: backlog
-  2-2-aplicar-modelo-de-rotina-a-um-cliente: backlog
-  2-3-visualizar-e-gerenciar-tarefas-em-calendario-lista: backlog
-  2-4-executar-checklist-de-uma-tarefa: backlog
-  2-5-atribuicao-em-massa-de-tarefas: backlog
-  2-6-editar-configuracao-de-rotinas-em-massa: backlog
+  epic-2: in-progress
+  2-1-criar-modelo-de-rotina-padrao: done
+  2-2-aplicar-modelo-de-rotina-a-um-cliente: ready-for-dev
+  2-3-visualizar-e-gerenciar-tarefas-em-calendario-lista: ready-for-dev
+  2-4-executar-checklist-de-uma-tarefa: ready-for-dev
+  2-5-atribuicao-em-massa-de-tarefas: ready-for-dev
+  2-6-editar-configuracao-de-rotinas-em-massa: ready-for-dev
   epic-2-retrospective: optional
 
   epic-3: backlog
@@ -111,6 +111,6 @@ development_status:
   epic-8: in-progress
   8-1-autenticacao-e-papeis-supabase-auth-rls: done
   8-2-cadastrar-usuarios-internos-admin-gestor-operador: done
-  8-3-cadastrar-usuarios-de-clientes-acesso-por-cnpj: backlog
-  8-4-cofre-de-senhas-segredos-criptografados-e-auditoria: backlog
+  8-3-cadastrar-usuarios-de-clientes-acesso-por-cnpj: review
+  8-4-cofre-de-senhas-segredos-criptografados-e-auditoria: ready-for-dev
   epic-8-retrospective: optional
