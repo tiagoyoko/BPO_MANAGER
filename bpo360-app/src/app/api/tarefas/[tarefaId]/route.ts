@@ -1,6 +1,7 @@
 /**
  * Story 2.3: GET /api/tarefas/[tarefaId] — detalhe da tarefa com checklist.
  * Story 2.3 Task 4: PATCH para editar status.
+ * Story 2.4 Task 3: PATCH status "concluida" só se todos obrigatórios marcados.
  * Guard: mesmo bpo_id.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -195,6 +196,35 @@ export async function PATCH(
   }
 
   const supabase = await createClient();
+
+  if (status === "concluida") {
+    const { data: obrigatorios, error: errCheck } = await supabase
+      .from("tarefa_checklist_itens")
+      .select("id, concluido")
+      .eq("tarefa_id", tarefaId)
+      .eq("obrigatorio", true);
+
+    if (errCheck) {
+      return NextResponse.json(
+        { data: null, error: { code: "DB_ERROR", message: errCheck.message } },
+        { status: 500 }
+      );
+    }
+    const pendentes = (obrigatorios ?? []).filter((r: { concluido: boolean }) => !r.concluido);
+    if (pendentes.length > 0) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: {
+            code: "REGRA_NEGOCIO",
+            message: "Complete todos os itens obrigatórios do checklist antes de concluir a tarefa.",
+          },
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const { data: updated, error } = await supabase
     .from("tarefas")
     .update({ status })

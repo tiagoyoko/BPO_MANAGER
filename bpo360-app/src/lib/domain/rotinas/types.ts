@@ -145,6 +145,7 @@ export type TarefaListItem = {
   dataVencimento: string;
   status: string;
   prioridade: string;
+  tipoServico: string | null;
   responsavelId: string | null;
   responsavelNome: string | null;
   clienteId: string;

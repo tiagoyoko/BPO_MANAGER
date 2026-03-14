@@ -1,6 +1,6 @@
 # Story 2.3: Visualizar e gerenciar tarefas em calendário/lista
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -90,10 +90,11 @@ so that **eu planeje e execute rotinas de forma organizada**.
 
 - Task 1: GET /api/tarefas e GET /api/clientes/[clienteId]/tarefas implementados com filtros (clienteId, dataInicio, dataFim, status, responsavelId, prioridade, page, limit). Resposta { data: { tarefas, total, page, limit } }. Status "atrasada" derivado quando data_vencimento < hoje e status !== concluida. Nome do responsável obtido em batch a partir de usuarios.
 - Task 2: GET /api/tarefas/[tarefaId] retorna tarefa com checklist (tarefa_checklist_itens); comentarios e historico como arrays vazios (placeholder). PATCH /api/tarefas/[tarefaId] para atualizar status. Guard canAccessModelos (admin_bpo, gestor_bpo, operador_bpo); cliente_final não acessa.
-- Task 3: Página /clientes/[clienteId]/tarefas com toggle Calendário/Lista; calendário mensal em tabela com navegação mês; lista agrupada por data; filtros status, responsável, prioridade. Aba "Tarefas" adicionada no layout do cliente.
-- Task 4: Página /tarefas/[tarefaId] com checklist (somente leitura nesta story), seção Comentários "Em breve", Histórico vazio, botões Editar status (PATCH).
+- Task 3: Página /clientes/[clienteId]/tarefas com toggle Calendário/Lista; calendário mensal e semanal; lista agrupada por data; filtros tipo, status, responsável e prioridade. Aba "Tarefas" adicionada no layout do cliente.
+- Task 4: Página /tarefas/[tarefaId] com checklist, seção Comentários "Em breve", Histórico vazio e botões Editar status (PATCH). Endpoint de checklist incluído para suportar a interação já presente na UI e preparar a story 2.4.
 - Task 5: Página /tarefas/hoje com GET /api/tarefas?dataInicio=hoje&dataFim=hoje; tarefas agrupadas por cliente; link para detalhe.
 - Task 6: Testes em route.test.ts para GET/PATCH tarefas, GET clientes/[clienteId]/tarefas: 401, 403, 404, 200, filtros e isolamento BPO. 188 testes passando.
+- Code review: corrigidos gaps do AC 1 com filtro por tipo e visão semanal no calendário; File List sincronizada com os arquivos efetivamente alterados.
 
 ### File List
 
@@ -102,6 +103,8 @@ so that **eu planeje e execute rotinas de forma organizada**.
 - bpo360-app/src/app/api/tarefas/route.test.ts
 - bpo360-app/src/app/api/tarefas/[tarefaId]/route.ts
 - bpo360-app/src/app/api/tarefas/[tarefaId]/route.test.ts
+- bpo360-app/src/app/api/tarefas/[tarefaId]/checklist/[itemId]/route.ts
+- bpo360-app/src/app/api/tarefas/[tarefaId]/checklist/[itemId]/route.test.ts
 - bpo360-app/src/app/api/clientes/[clienteId]/tarefas/route.ts
 - bpo360-app/src/app/api/clientes/[clienteId]/tarefas/route.test.ts
 - bpo360-app/src/app/(bpo)/clientes/[clienteId]/layout.tsx (aba Tarefas)
@@ -116,3 +119,4 @@ so that **eu planeje e execute rotinas de forma organizada**.
 ### Change Log
 
 - 2026-03-14: Story 2.3 implementada. APIs GET/PATCH tarefas, GET clientes/[id]/tarefas; UI calendário/lista por cliente, detalhe da tarefa, painel Hoje; testes passando.
+- 2026-03-14: Code review concluído. Adicionados filtro por tipo e visão semanal; documentação da story alinhada aos arquivos realmente alterados.

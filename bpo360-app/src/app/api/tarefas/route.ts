@@ -22,6 +22,16 @@ type TarefaRow = {
   rotina_cliente_id: string | null;
 };
 
+type RotinaClienteRow = {
+  id: string;
+  rotina_modelo_id: string;
+};
+
+type RotinaModeloRow = {
+  id: string;
+  tipo_servico: string | null;
+};
+
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
@@ -44,6 +54,7 @@ export async function GET(request: NextRequest) {
   const statusParam = (searchParams.get("status") ?? "").trim();
   const responsavelId = (searchParams.get("responsavelId") ?? "").trim() || null;
   const prioridadeParam = (searchParams.get("prioridade") ?? "").trim();
+  const tipoParam = (searchParams.get("tipo") ?? "").trim();
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   const offset = (page - 1) * limit;
@@ -59,8 +70,59 @@ export async function GET(request: NextRequest) {
     prioridadeParam && PRIORIDADES_VALIDAS.includes(prioridadeParam as (typeof PRIORIDADES_VALIDAS)[number])
       ? prioridadeParam
       : null;
+  const tipoServico = tipoParam || null;
 
   const supabase = await createClient();
+
+  let rotinaClienteIdsPorTipo: string[] | null = null;
+  if (tipoServico) {
+    const { data: modelos, error: errModelos } = await supabase
+      .from("rotinas_modelo")
+      .select("id")
+      .eq("bpo_id", user.bpoId)
+      .eq("tipo_servico", tipoServico);
+
+    if (errModelos) {
+      return NextResponse.json(
+        { data: null, error: { code: "DB_ERROR", message: errModelos.message } },
+        { status: 500 }
+      );
+    }
+
+    const modeloIds = ((modelos ?? []) as { id: string }[]).map((modelo) => modelo.id);
+    if (modeloIds.length === 0) {
+      return NextResponse.json({
+        data: { tarefas: [], total: 0, page, limit },
+        error: null,
+      });
+    }
+
+    let rotinasClienteQuery = supabase
+      .from("rotinas_cliente")
+      .select("id")
+      .eq("bpo_id", user.bpoId)
+      .in("rotina_modelo_id", modeloIds);
+
+    if (clienteId) {
+      rotinasClienteQuery = rotinasClienteQuery.eq("cliente_id", clienteId);
+    }
+
+    const { data: rotinasCliente, error: errRotinasCliente } = await rotinasClienteQuery;
+    if (errRotinasCliente) {
+      return NextResponse.json(
+        { data: null, error: { code: "DB_ERROR", message: errRotinasCliente.message } },
+        { status: 500 }
+      );
+    }
+
+    rotinaClienteIdsPorTipo = ((rotinasCliente ?? []) as { id: string }[]).map((rotina) => rotina.id);
+    if (rotinaClienteIdsPorTipo.length === 0) {
+      return NextResponse.json({
+        data: { tarefas: [], total: 0, page, limit },
+        error: null,
+      });
+    }
+  }
 
   let query = supabase
     .from("tarefas")
@@ -75,6 +137,7 @@ export async function GET(request: NextRequest) {
   if (status) query = query.eq("status", status);
   if (responsavelId) query = query.eq("responsavel_id", responsavelId);
   if (prioridade) query = query.eq("prioridade", prioridade);
+  if (rotinaClienteIdsPorTipo) query = query.in("rotina_cliente_id", rotinaClienteIdsPorTipo);
 
   query = query.order("data_vencimento", { ascending: true }).order("prioridade", { ascending: false });
   const { data: rows, error, count } = await query.range(offset, offset + limit - 1);
@@ -87,8 +150,56 @@ export async function GET(request: NextRequest) {
   }
 
   const list = (rows ?? []) as TarefaRow[];
+  const rotinaClienteIds = [...new Set(list.map((r) => r.rotina_cliente_id).filter(Boolean))] as string[];
   const responsavelIds = [...new Set(list.map((r) => r.responsavel_id).filter(Boolean))] as string[];
-  let nomesMap: Record<string, string> = {};
+  const nomesMap: Record<string, string> = {};
+  const tipoServicoPorRotinaClienteId: Record<string, string | null> = {};
+
+  if (rotinaClienteIds.length > 0) {
+    const { data: rotinasCliente, error: errRotinasCliente } = await supabase
+      .from("rotinas_cliente")
+      .select("id, rotina_modelo_id")
+      .in("id", rotinaClienteIds);
+
+    if (errRotinasCliente) {
+      return NextResponse.json(
+        { data: null, error: { code: "DB_ERROR", message: errRotinasCliente.message } },
+        { status: 500 }
+      );
+    }
+
+    const rotinasClienteRows = (rotinasCliente ?? []) as RotinaClienteRow[];
+    const rotinaModeloIds = [...new Set(rotinasClienteRows.map((row) => row.rotina_modelo_id).filter(Boolean))];
+    const rotinaModeloPorRotinaClienteId: Record<string, string> = {};
+    for (const row of rotinasClienteRows) {
+      rotinaModeloPorRotinaClienteId[row.id] = row.rotina_modelo_id;
+    }
+
+    if (rotinaModeloIds.length > 0) {
+      const { data: modelos, error: errModelos } = await supabase
+        .from("rotinas_modelo")
+        .select("id, tipo_servico")
+        .in("id", rotinaModeloIds);
+
+      if (errModelos) {
+        return NextResponse.json(
+          { data: null, error: { code: "DB_ERROR", message: errModelos.message } },
+          { status: 500 }
+        );
+      }
+
+      const tipoServicoPorRotinaModeloId: Record<string, string | null> = {};
+      for (const modelo of (modelos ?? []) as RotinaModeloRow[]) {
+        tipoServicoPorRotinaModeloId[modelo.id] = modelo.tipo_servico ?? null;
+      }
+
+      for (const rotinaClienteId of Object.keys(rotinaModeloPorRotinaClienteId)) {
+        tipoServicoPorRotinaClienteId[rotinaClienteId] =
+          tipoServicoPorRotinaModeloId[rotinaModeloPorRotinaClienteId[rotinaClienteId]] ?? null;
+      }
+    }
+  }
+
   if (responsavelIds.length > 0) {
     const { data: usuarios } = await supabase
       .from("usuarios")
@@ -112,6 +223,7 @@ export async function GET(request: NextRequest) {
       dataVencimento: r.data_vencimento,
       status: statusExibir,
       prioridade: r.prioridade,
+      tipoServico: r.rotina_cliente_id ? tipoServicoPorRotinaClienteId[r.rotina_cliente_id] ?? null : null,
       responsavelId: r.responsavel_id,
       responsavelNome: r.responsavel_id ? nomesMap[r.responsavel_id] ?? null : null,
       clienteId: r.cliente_id,

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { TarefaDetalhe } from "@/lib/domain/rotinas/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { TarefaDetalhe, TarefaChecklistItem } from "@/lib/domain/rotinas/types";
 
 const STATUS_LABEL: Record<string, string> = {
   a_fazer: "A fazer",
@@ -28,6 +29,7 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
   const [tarefa, setTarefa] = useState<TarefaDetalhe | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,6 +67,73 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
       setFeedback("Erro ao atualizar.");
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function marcarTarefaConcluida() {
+    if (!tarefa) return;
+    setUpdating(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/tarefas/${tarefaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "concluida" }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setTarefa((prev) => (prev ? { ...prev, status: "concluida" } : null));
+        setFeedback("Tarefa marcada como concluída.");
+      } else {
+        setFeedback(json.error?.message ?? "Erro ao concluir.");
+      }
+    } catch {
+      setFeedback("Erro ao concluir.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function toggleChecklistItem(item: TarefaChecklistItem, novoConcluido: boolean) {
+    if (!tarefa) return;
+    const tarefaConcluida = tarefa.status === "concluida";
+    if (tarefaConcluida) return;
+    const desabilitadoObrigatorio = tarefaConcluida && item.obrigatorio && item.concluido;
+    if (desabilitadoObrigatorio) return;
+    setUpdatingItemId(item.id);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/tarefas/${tarefaId}/checklist/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concluido: novoConcluido }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data?.item) {
+        const it = json.data.item;
+        setTarefa((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            checklist: prev.checklist.map((c) =>
+              c.id === item.id
+                ? {
+                    ...c,
+                    concluido: it.concluido,
+                    concluidoPor: it.concluidoPor ?? null,
+                    concluidoEm: it.concluidoEm ?? null,
+                  }
+                : c
+            ),
+          };
+        });
+      } else {
+        setFeedback(json.error?.message ?? "Erro ao atualizar item.");
+      }
+    } catch {
+      setFeedback("Erro ao atualizar item.");
+    } finally {
+      setUpdatingItemId(null);
     }
   }
 
@@ -130,40 +199,67 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
         )}
         <CardContent className="space-y-6">
           <section aria-labelledby="checklist-heading">
-            <h2 id="checklist-heading" className="text-lg font-medium mb-2">
-              Checklist
-            </h2>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h2 id="checklist-heading" className="text-lg font-medium">
+                Checklist
+              </h2>
+              {tarefa.status !== "concluida" && (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={updating}
+                  onClick={marcarTarefaConcluida}
+                >
+                  Marcar tarefa como concluída
+                </Button>
+              )}
+            </div>
             {tarefa.checklist.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum item.</p>
             ) : (
               <ul className="space-y-2">
-                {tarefa.checklist.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-start gap-2 text-sm"
-                  >
-                    <span
-                      className="flex-shrink-0 mt-0.5"
-                      aria-hidden
+                {tarefa.checklist.map((item) => {
+                  const tarefaConcluida = tarefa.status === "concluida";
+                  const desabilitarCheckbox = tarefaConcluida || (updatingItemId === item.id);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-start gap-2 text-sm"
                     >
-                      {item.concluido ? "✓" : "○"}
-                    </span>
-                    <span className={item.concluido ? "text-muted-foreground line-through" : ""}>
-                      {item.titulo}
-                      {item.descricao && (
-                        <span className="block text-muted-foreground text-xs">
-                          {item.descricao}
-                        </span>
-                      )}
-                      {item.concluidoEm && (
-                        <span className="block text-xs text-muted-foreground">
-                          Concluído em{" "}
-                          {new Date(item.concluidoEm).toLocaleString("pt-BR")}
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                ))}
+                      <Checkbox
+                        id={`checklist-${item.id}`}
+                        checked={item.concluido}
+                        disabled={desabilitarCheckbox}
+                        onCheckedChange={(checked) =>
+                          toggleChecklistItem(item, checked === true)
+                        }
+                        aria-label={item.titulo}
+                        className="flex-shrink-0 mt-0.5"
+                      />
+                      <label
+                        htmlFor={`checklist-${item.id}`}
+                        className={item.concluido ? "text-muted-foreground line-through cursor-pointer" : "cursor-pointer"}
+                      >
+                        {item.titulo}
+                        {item.obrigatorio && (
+                          <span className="text-muted-foreground font-normal ml-1">(obrigatório)</span>
+                        )}
+                        {item.descricao && (
+                          <span className="block text-muted-foreground text-xs">
+                            {item.descricao}
+                          </span>
+                        )}
+                        {item.concluidoEm && (
+                          <span className="block text-xs text-muted-foreground">
+                            Concluído em{" "}
+                            {new Date(item.concluidoEm).toLocaleString("pt-BR")}
+                          </span>
+                        )}
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>

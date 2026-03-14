@@ -84,12 +84,26 @@ function createSupabaseForGetTarefa(tarefa: unknown = TAREFA_ROW, checklist: unk
   return { from };
 }
 
-function createSupabaseForPatch(updated: unknown = { ...TAREFA_ROW, status: "em_andamento" }) {
+function createSupabaseForPatch(
+  updated: unknown = { ...TAREFA_ROW, status: "em_andamento" },
+  obrigatoriosChecklist: { id: string; concluido: boolean }[] = [{ id: "ci1", concluido: true }]
+) {
   const single = vi.fn().mockResolvedValue({ data: updated, error: null });
   const update = vi.fn().mockReturnValue({
     eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
   });
-  const from = vi.fn().mockReturnValue({ update });
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "tarefa_checklist_itens") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: obrigatoriosChecklist, error: null }),
+          }),
+        }),
+      };
+    }
+    return { update };
+  });
   return { from };
 }
 
@@ -214,5 +228,50 @@ describe("PATCH /api/tarefas/[tarefaId]", () => {
     expect(res.status).toBe(200);
     expect(json.error).toBeNull();
     expect(json.data.status).toBe("em_andamento");
+  });
+
+  it("retorna 400 ao concluir tarefa com obrigatório do checklist não marcado (Story 2.4)", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const supabase = createSupabaseForPatch(
+      { ...TAREFA_ROW, status: "concluida" },
+      [{ id: "ci1", concluido: false }]
+    );
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "concluida" }),
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error?.code).toBe("REGRA_NEGOCIO");
+    expect(json.error?.message).toContain("obrigatórios");
+  });
+
+  it("retorna 200 ao concluir tarefa com todos obrigatórios marcados (Story 2.4)", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const updated = { ...TAREFA_ROW, status: "concluida" };
+    const supabase = createSupabaseForPatch(updated, [
+      { id: "ci1", concluido: true },
+      { id: "ci2", concluido: true },
+    ]);
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "concluida" }),
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.error).toBeNull();
+    expect(json.data.status).toBe("concluida");
   });
 });

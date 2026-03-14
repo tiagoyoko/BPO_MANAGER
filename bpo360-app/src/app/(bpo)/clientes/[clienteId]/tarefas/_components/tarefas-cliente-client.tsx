@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FeedbackToast } from "@/components/feedback/feedback-toast";
 import type { TarefaListItem } from "@/lib/domain/rotinas/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,36 +47,123 @@ export function TarefasClienteClient({ clienteId }: Props) {
   const [tarefas, setTarefas] = useState<TarefaListItem[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [modalAtribuir, setModalAtribuir] = useState(false);
+  const [atribuirResponsavelId, setAtribuirResponsavelId] = useState("");
+  const [atribuirSubmitting, setAtribuirSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    open: boolean;
+    title: string;
+    message?: string;
+    variant: "success" | "error";
+  }>({ open: false, title: "", variant: "success" });
 
   const { dataInicio, dataFim } = useMemo(
     () => getMonthStartEnd(year, month),
     [year, month]
   );
 
+  const fetchTarefas = useMemo(
+    () => () => {
+      const params = new URLSearchParams({ dataInicio, dataFim });
+      if (status) params.set("status", status);
+      if (responsavelId) params.set("responsavelId", responsavelId);
+      if (prioridade) params.set("prioridade", prioridade);
+      return fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
+        .then((r) => r.json())
+        .then((json) => setTarefas(json.data?.tarefas ?? []));
+    },
+    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade]
+  );
+
   useEffect(() => {
     let cancelled = false;
-    const params = new URLSearchParams({
-      dataInicio: viewMode === "calendario" ? dataInicio : dataInicio,
-      dataFim: viewMode === "calendario" ? dataFim : dataFim,
+    setLoading(true);
+    fetchTarefas().finally(() => {
+      if (!cancelled) setLoading(false);
     });
-    if (status) params.set("status", status);
-    if (responsavelId) params.set("responsavelId", responsavelId);
-    if (prioridade) params.set("prioridade", prioridade);
-
-    fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled) return;
-        setTarefas(json.data?.tarefas ?? []);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
     return () => { cancelled = true; };
-  }, [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, viewMode]);
+  }, [fetchTarefas, viewMode]);
+
+  const idsNaPagina = useMemo(
+    () => new Set(tarefasPorData.flatMap(({ items }) => items.map((t) => t.id))),
+    [tarefasPorData]
+  );
+  const allSelectedNaPagina = idsNaPagina.size > 0 && [...idsNaPagina].every((id) => selectedIds.has(id));
+  const toggleSelectAll = () => {
+    if (allSelectedNaPagina) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        idsNaPagina.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...idsNaPagina]));
+    }
+  };
+  const toggleSelectAllInGroup = (items: TarefaListItem[]) => {
+    const groupIds = new Set(items.map((t) => t.id));
+    const allInGroupSelected = groupIds.size > 0 && [...groupIds].every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allInGroupSelected) groupIds.forEach((id) => next.delete(id));
+      else groupIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAtribuirSubmit = async () => {
+    if (!atribuirResponsavelId || selectedIds.size === 0) return;
+    setAtribuirSubmitting(true);
+    try {
+      const res = await fetch("/api/tarefas/atribuir-massa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tarefaIds: Array.from(selectedIds),
+          responsavelId: atribuirResponsavelId,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setToast({
+          open: true,
+          title: "Erro ao atribuir",
+          message: json.error?.message ?? "Tente novamente.",
+          variant: "error",
+        });
+        return;
+      }
+      const { sucesso, falhas } = json.data ?? { sucesso: 0, falhas: [] };
+      const msg =
+        falhas.length > 0
+          ? `${sucesso} atribuída(s); ${falhas.length} falharam: ${falhas.map((f: { tarefaId: string; motivo: string }) => f.motivo).join("; ")}`
+          : `${sucesso} tarefa(s) atribuída(s) com sucesso.`;
+      setToast({
+        open: true,
+        title: falhas.length > 0 ? "Atribuição parcial" : "Sucesso",
+        message: msg,
+        variant: falhas.length > 0 ? "error" : "success",
+      });
+      setSelectedIds(new Set());
+      setModalAtribuir(false);
+      setAtribuirResponsavelId("");
+      fetchTarefas();
+    } finally {
+      setAtribuirSubmitting(false);
+    }
+  };
 
   useEffect(() => {
-    fetch("/api/admin/usuarios")
+    fetch("/api/admin/usuarios?paraAtribuicao=1")
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((json) => setUsuarios(Array.isArray(json?.data) ? json.data : []))
       .catch(() => setUsuarios([]));
@@ -118,6 +207,75 @@ export function TarefasClienteClient({ clienteId }: Props) {
 
   return (
     <div className="space-y-4">
+      {selectedIds.size > 0 && viewMode === "lista" && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <span className="text-sm font-medium">
+            {selectedIds.size} itens selecionados
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Limpar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setModalAtribuir(true)}
+            >
+              Atribuir responsável
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {modalAtribuir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg">
+            <h3 className="text-sm font-semibold mb-2">Atribuir responsável</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              {selectedIds.size} tarefa(s) selecionada(s)
+            </p>
+            <select
+              value={atribuirResponsavelId}
+              onChange={(e) => setAtribuirResponsavelId(e.target.value)}
+              className="mb-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Selecione o responsável</option>
+              {usuarios.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome ?? u.email ?? u.id}
+                </option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setModalAtribuir(false);
+                  setAtribuirResponsavelId("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!atribuirResponsavelId || atribuirSubmitting}
+                onClick={handleAtribuirSubmit}
+              >
+                {atribuirSubmitting ? "Atribuindo…" : "Atribuir"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex rounded-md border border-border p-0.5">
           <Button
@@ -140,11 +298,37 @@ export function TarefasClienteClient({ clienteId }: Props) {
 
         {viewMode === "calendario" && (
           <div className="flex items-center gap-2">
+            <div className="flex rounded-md border border-border p-0.5">
+              <Button
+                type="button"
+                variant={calendarMode === "mensal" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCalendarMode("mensal")}
+              >
+                Mensal
+              </Button>
+              <Button
+                type="button"
+                variant={calendarMode === "semanal" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCalendarMode("semanal")}
+              >
+                Semanal
+              </Button>
+            </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => {
+                if (calendarMode === "semanal") {
+                  setSelectedDate((current) => {
+                    const next = new Date(current);
+                    next.setDate(current.getDate() - 7);
+                    return next;
+                  });
+                  return;
+                }
                 if (month === 1) {
                   setMonth(12);
                   setYear((y) => y - 1);
@@ -154,21 +338,30 @@ export function TarefasClienteClient({ clienteId }: Props) {
               ←
             </Button>
             <span className="text-sm font-medium min-w-[120px]">
-              {new Date(year, month - 1).toLocaleDateString("pt-BR", {
-                month: "long",
-                year: "numeric",
-              })}
+              {calendarMode === "semanal"
+                ? weeklyRange.label
+                : new Date(year, month - 1).toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                  })}
             </span>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => {
+                if (calendarMode === "semanal") {
+                  setSelectedDate((current) => {
+                    const next = new Date(current);
+                    next.setDate(current.getDate() + 7);
+                    return next;
+                  });
+                  return;
+                }
                 if (month === 12) {
                   setMonth(1);
                   setYear((y) => y + 1);
                 } else setMonth((m) => m + 1);
-                }
               }}
             >
               →
@@ -210,6 +403,17 @@ export function TarefasClienteClient({ clienteId }: Props) {
               <option key={v} value={v}>{l}</option>
             ))}
           </select>
+          <label className="text-sm text-muted-foreground">Tipo</label>
+          <select
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value)}
+            className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+          >
+            <option value="">Todos</option>
+            {tiposServico.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -218,57 +422,101 @@ export function TarefasClienteClient({ clienteId }: Props) {
       ) : viewMode === "calendario" ? (
         <Card>
           <CardContent className="p-2">
-            <table className="w-full table-fixed text-sm">
-              <thead>
-                <tr>
-                  {weekDays.map((w) => (
-                    <th key={w} className="border-b p-1 text-left font-medium text-muted-foreground">
-                      {w}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: Math.ceil(calendarDays.length / 7) }).map((_, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {weekDays.map((_, colIndex) => {
-                      const cell = calendarDays[rowIndex * 7 + colIndex];
-                      if (!cell) {
-                        return <td key={colIndex} className="border-b p-1 min-h-[60px]" />;
-                      }
-                      const dayTasks = tarefasPorDia[cell.dateStr] ?? [];
-                      return (
-                        <td
-                          key={colIndex}
-                          className="align-top border-b p-1 min-h-[60px]"
-                        >
-                          <span className="text-muted-foreground">{cell.day}</span>
-                          <ul className="mt-1 space-y-0.5">
-                            {dayTasks.map((t) => (
-                              <li key={t.id}>
-                                <Link
-                                  href={`/tarefas/${t.id}`}
-                                  className="text-primary hover:underline line-clamp-2 block"
-                                >
-                                  {t.titulo}
-                                </Link>
-                                <Badge variant="secondary" className="text-xs">
-                                  {STATUS_LABEL[t.status] ?? t.status}
-                                </Badge>
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                      );
-                    })}
+            {calendarMode === "mensal" ? (
+              <table className="w-full table-fixed text-sm">
+                <thead>
+                  <tr>
+                    {weekDays.map((w) => (
+                      <th key={w} className="border-b p-1 text-left font-medium text-muted-foreground">
+                        {w}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {Array.from({ length: Math.ceil(calendarDays.length / 7) }).map((_, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {weekDays.map((_, colIndex) => {
+                        const cell = calendarDays[rowIndex * 7 + colIndex];
+                        if (!cell) {
+                          return <td key={colIndex} className="border-b p-1 min-h-[60px]" />;
+                        }
+                        const dayTasks = tarefasPorDia[cell.dateStr] ?? [];
+                        return (
+                          <td
+                            key={colIndex}
+                            className="align-top border-b p-1 min-h-[60px]"
+                          >
+                            <span className="text-muted-foreground">{cell.day}</span>
+                            <ul className="mt-1 space-y-0.5">
+                              {dayTasks.map((t) => (
+                                <li key={t.id}>
+                                  <Link
+                                    href={`/tarefas/${t.id}`}
+                                    className="text-primary hover:underline line-clamp-2 block"
+                                  >
+                                    {t.titulo}
+                                  </Link>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {STATUS_LABEL[t.status] ?? t.status}
+                                  </Badge>
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-7">
+                {weekCells.map((cell) => {
+                  const dayTasks = tarefasPorDia[cell.key] ?? [];
+                  return (
+                    <div key={cell.key} className="rounded-md border border-border p-2">
+                      <p className="text-xs font-medium text-muted-foreground">{cell.label}</p>
+                      <ul className="mt-2 space-y-1">
+                        {dayTasks.length === 0 ? (
+                          <li className="text-xs text-muted-foreground">Sem tarefas</li>
+                        ) : (
+                          dayTasks.map((t) => (
+                            <li key={t.id}>
+                              <Link
+                                href={`/tarefas/${t.id}`}
+                                className="text-primary hover:underline line-clamp-2 block text-sm"
+                              >
+                                {t.titulo}
+                              </Link>
+                              <Badge variant="secondary" className="mt-1 text-xs">
+                                {STATUS_LABEL[t.status] ?? t.status}
+                              </Badge>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
+          {tarefasPorData.length > 0 && (
+            <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-2 py-1.5">
+              <Checkbox
+                id="select-all-page"
+                checked={allSelectedNaPagina}
+                onCheckedChange={toggleSelectAll}
+              />
+              <label htmlFor="select-all-page" className="text-sm text-muted-foreground cursor-pointer">
+                Selecionar todas (página atual)
+              </label>
+            </div>
+          )}
           {tarefasPorData.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma tarefa no período.</p>
           ) : (
@@ -282,12 +530,29 @@ export function TarefasClienteClient({ clienteId }: Props) {
                       month: "long",
                     })}
                   </h3>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Checkbox
+                      id={`select-all-${data}`}
+                      checked={items.length > 0 && items.every((t) => selectedIds.has(t.id))}
+                      onCheckedChange={() => toggleSelectAllInGroup(items)}
+                    />
+                    <label
+                      htmlFor={`select-all-${data}`}
+                      className="text-xs text-muted-foreground cursor-pointer"
+                    >
+                      Selecionar todas (este dia)
+                    </label>
+                  </div>
                   <ul className="space-y-2">
                     {items.map((t) => (
-                      <li key={t.id} className="flex items-center justify-between gap-2 border-b border-border pb-2 last:border-0">
+                      <li key={t.id} className="flex items-center gap-2 border-b border-border pb-2 last:border-0">
+                        <Checkbox
+                          checked={selectedIds.has(t.id)}
+                          onCheckedChange={() => toggleSelect(t.id)}
+                        />
                         <Link
                           href={`/tarefas/${t.id}`}
-                          className="text-primary hover:underline font-medium"
+                          className="text-primary hover:underline font-medium flex-1 min-w-0"
                         >
                           {t.titulo}
                         </Link>
@@ -298,6 +563,11 @@ export function TarefasClienteClient({ clienteId }: Props) {
                           <Badge variant="outline">
                             {PRIORIDADE_LABEL[t.prioridade] ?? t.prioridade}
                           </Badge>
+                          {t.tipoServico && (
+                            <Badge variant="outline">
+                              {t.tipoServico}
+                            </Badge>
+                          )}
                           {t.responsavelNome && (
                             <span className="text-xs text-muted-foreground">
                               {t.responsavelNome}
@@ -313,6 +583,14 @@ export function TarefasClienteClient({ clienteId }: Props) {
           )}
         </div>
       )}
+
+      <FeedbackToast
+        open={toast.open}
+        title={toast.title}
+        message={toast.message}
+        variant={toast.variant}
+        onClose={() => setToast((p) => ({ ...p, open: false }))}
+      />
     </div>
   );
 }

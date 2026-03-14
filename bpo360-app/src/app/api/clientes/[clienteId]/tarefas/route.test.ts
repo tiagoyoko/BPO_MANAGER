@@ -62,6 +62,7 @@ function createSupabaseForTarefas(tarefas: unknown[] = TAREFAS_ROWS, total = 1) 
     eq: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
     lte: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
     order,
   };
   const select = vi.fn().mockReturnValue(chain);
@@ -72,6 +73,40 @@ function createSupabaseForTarefas(tarefas: unknown[] = TAREFAS_ROWS, total = 1) 
           in: vi.fn().mockResolvedValue({
             data: [{ id: "u1", nome: "Operador" }],
             error: null,
+          }),
+        }),
+      };
+    }
+    if (table === "rotinas_cliente") {
+      return {
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({
+            data: [{ id: "rc1", rotina_modelo_id: "modelo-1" }],
+            error: null,
+          }),
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({
+                data: [{ id: "rc1" }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }
+    if (table === "rotinas_modelo") {
+      return {
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({
+            data: [{ id: "modelo-1", tipo_servico: "conciliacao" }],
+            error: null,
+          }),
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ id: "modelo-1" }],
+              error: null,
+            }),
           }),
         }),
       };
@@ -142,6 +177,7 @@ describe("GET /api/clientes/[clienteId]/tarefas", () => {
     expect(json.error).toBeNull();
     expect(json.data.tarefas).toHaveLength(1);
     expect(json.data.tarefas[0].clienteId).toBe("cliente-1");
+    expect(json.data.tarefas[0].tipoServico).toBe("conciliacao");
     expect(json.data.total).toBe(1);
   });
 
@@ -162,5 +198,40 @@ describe("GET /api/clientes/[clienteId]/tarefas", () => {
 
     expect(res.status).toBe(200);
     expect(json.data.tarefas).toBeDefined();
+  });
+
+  it("retorna vazio quando filtro por tipo não encontra rotinas do cliente", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    vi.mocked(buscarClientePorIdEBpo).mockResolvedValue({
+      data: { id: "cliente-1", bpo_id: "bpo-1" },
+      error: null,
+    });
+    const supabase = createSupabaseForTarefas();
+    supabase.from = vi.fn().mockImplementation((table: string) => {
+      if (table === "rotinas_modelo") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return createSupabaseForTarefas().from(table);
+    });
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/clientes/cliente-1/tarefas?tipo=fiscal"),
+      { params: Promise.resolve({ clienteId: "cliente-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.tarefas).toEqual([]);
+    expect(json.data.total).toBe(0);
   });
 });
