@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"  # updated by dev-story 1-3 review follow-ups
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -44,10 +44,10 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 development_status:
   epic-1: in-progress
   1-1-setup-do-projeto-next-js-supabase: done
-  1-2-cadastrar-cliente-de-bpo: ready-for-dev
-  1-3-editar-dados-e-status-de-cliente: backlog
-  1-4-listar-e-filtrar-clientes: backlog
-  1-5-configurar-erp-principal-f360-por-cliente: backlog
+  1-2-cadastrar-cliente-de-bpo: done
+  1-3-editar-dados-e-status-de-cliente: review
+  1-4-listar-e-filtrar-clientes: review
+  1-5-configurar-erp-principal-f360-por-cliente: ready-for-dev
   1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: backlog
   1-7-ver-status-de-configuracao-erp-por-cliente: backlog
   epic-1-retrospective: optional
@@ -108,9 +108,9 @@ development_status:
   7-6-sair-explicitamente-do-modo-foco: backlog
   epic-7-retrospective: optional
 
-  epic-8: backlog
-  8-1-autenticacao-e-papeis-supabase-auth-rls: backlog
-  8-2-cadastrar-usuarios-internos-admin-gestor-operador: backlog
+  epic-8: in-progress
+  8-1-autenticacao-e-papeis-supabase-auth-rls: done
+  8-2-cadastrar-usuarios-internos-admin-gestor-operador: done
   8-3-cadastrar-usuarios-de-clientes-acesso-por-cnpj: backlog
   8-4-cofre-de-senhas-segredos-criptografados-e-auditoria: backlog
   epic-8-retrospective: optional
