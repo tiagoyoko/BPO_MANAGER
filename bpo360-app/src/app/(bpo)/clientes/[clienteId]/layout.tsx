@@ -46,12 +46,20 @@ export default async function ClienteLayout({
             Resumo
           </Link>
           {podeVerConfig && (
-            <Link
-              href={`/clientes/${clienteId}/config`}
-              className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
-            >
-              Configurações
-            </Link>
+            <>
+              <Link
+                href={`/clientes/${clienteId}/tarefas`}
+                className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
+              >
+                Tarefas
+              </Link>
+              <Link
+                href={`/clientes/${clienteId}/config`}
+                className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
+              >
+                Configurações
+              </Link>
+            </>
           )}
         </nav>
       </header>

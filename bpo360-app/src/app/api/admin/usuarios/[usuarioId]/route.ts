@@ -5,11 +5,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
-import { canManageUsers } from "@/lib/auth/rbac";
+import { canManageClienteUsers, canManageUsers } from "@/lib/auth/rbac";
 import type { PapelBpo } from "@/types/domain";
 import { validarClienteDoMesmoBpo } from "../_shared";
 
 const ROLES_INTERNOS: PapelBpo[] = ["admin_bpo", "gestor_bpo", "operador_bpo"];
+const ROLE_CLIENTE_FINAL: PapelBpo = "cliente_final";
 
 export async function PATCH(
   request: NextRequest,
@@ -22,13 +23,6 @@ export async function PATCH(
       { status: 401 }
     );
   }
-  if (!canManageUsers(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
-
   const { usuarioId } = await params;
   if (!usuarioId) {
     return NextResponse.json(
@@ -51,7 +45,7 @@ export async function PATCH(
 
   const { data: existente, error: fetchError } = await supabase
     .from("usuarios")
-    .select("id, bpo_id")
+    .select("id, bpo_id, role")
     .eq("id", usuarioId)
     .single();
 
@@ -69,13 +63,41 @@ export async function PATCH(
     );
   }
 
+  const isClienteFinal = existente.role === ROLE_CLIENTE_FINAL;
+  if (isClienteFinal) {
+    if (!canManageClienteUsers(user)) {
+      return NextResponse.json(
+        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+        { status: 403 }
+      );
+    }
+  } else if (!canManageUsers(user)) {
+    return NextResponse.json(
+      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+      { status: 403 }
+    );
+  }
+
   const updates: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     atualizado_por_id: user.id,
   };
-  if (body.nome !== undefined) updates.nome = body.nome.trim();
+  if (body.nome !== undefined) updates.nome = body.nome.trim() || null;
   if (body.role !== undefined) {
-    if (!ROLES_INTERNOS.includes(body.role)) {
+    if (isClienteFinal) {
+      if (body.role !== ROLE_CLIENTE_FINAL) {
+        return NextResponse.json(
+          {
+            data: null,
+            error: {
+              code: "ROLE_INVALIDO",
+              message: "Usuário cliente_final não pode ser convertido por esta rota.",
+            },
+          },
+          { status: 400 }
+        );
+      }
+    } else if (!ROLES_INTERNOS.includes(body.role)) {
       return NextResponse.json(
         {
           data: null,
@@ -91,6 +113,18 @@ export async function PATCH(
   }
   if (body.clienteId !== undefined) {
     const clienteId = body.clienteId === "" || body.clienteId == null ? null : body.clienteId;
+    if (isClienteFinal && !clienteId) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: {
+            code: "CLIENTE_OBRIGATORIO",
+            message: "clienteId é obrigatório para usuário cliente_final.",
+          },
+        },
+        { status: 400 }
+      );
+    }
     if (clienteId) {
       const clienteValidation = await validarClienteDoMesmoBpo({
         supabase,

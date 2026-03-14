@@ -6,10 +6,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ConfirmarEncerramentoDialog } from "./confirmar-encerramento-dialog";
 
 beforeEach(() => {
-  HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
+  HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
     this.setAttribute("open", "");
   });
-  HTMLDialogElement.prototype.close = vi.fn(function close() {
+  HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
     this.removeAttribute("open");
   });
 });

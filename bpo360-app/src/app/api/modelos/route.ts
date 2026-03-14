@@ -13,6 +13,14 @@ import {
   type RotinaModeloRow,
   type RotinaModeloChecklistItemRow,
 } from "@/lib/domain/rotinas/types";
+type RotinaModeloListRow = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  periodicidade: string;
+  tipo_servico: string | null;
+  created_at: string;
+};
 
 // ─── GET /api/modelos ────────────────────────────────────────────────────────
 
@@ -45,7 +53,7 @@ export async function GET() {
     );
   }
 
-  const ids = (rows ?? []).map((r: RotinaModeloRow) => r.id);
+  const ids = ((rows ?? []) as RotinaModeloListRow[]).map((r) => r.id);
   const contagemItens: Record<string, number> = {};
   if (ids.length > 0) {
     const { data: itens } = await supabase
@@ -58,7 +66,7 @@ export async function GET() {
     });
   }
 
-  const modelos: RotinaModeloResumo[] = (rows ?? []).map((r: RotinaModeloRow) => ({
+  const modelos: RotinaModeloResumo[] = ((rows ?? []) as RotinaModeloListRow[]).map((r) => ({
     id: r.id,
     nome: r.nome,
     descricao: r.descricao ?? null,

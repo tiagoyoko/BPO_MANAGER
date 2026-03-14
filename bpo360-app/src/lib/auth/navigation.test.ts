@@ -23,10 +23,22 @@ describe("isRoleAllowedForPath", () => {
     expect(isRoleAllowedForPath("/clientes", "cliente_final")).toBe(true);
   });
 
+  it("permite /admin/usuarios para admin_bpo e gestor_bpo", () => {
+    expect(isRoleAllowedForPath("/admin/usuarios", "admin_bpo")).toBe(true);
+    expect(isRoleAllowedForPath("/admin/usuarios", "gestor_bpo")).toBe(true);
+    expect(isRoleAllowedForPath("/admin/usuarios", "operador_bpo")).toBe(false);
+  });
+
   it("restringe /admin a admin_bpo", () => {
     expect(isRoleAllowedForPath("/admin", "admin_bpo")).toBe(true);
     expect(isRoleAllowedForPath("/admin", "gestor_bpo")).toBe(false);
-    expect(isRoleAllowedForPath("/admin/usuarios", "operador_bpo")).toBe(false);
-    expect(isRoleAllowedForPath("/admin/usuarios", null)).toBe(false);
+    expect(isRoleAllowedForPath("/admin/config", "gestor_bpo")).toBe(false);
+    expect(isRoleAllowedForPath("/admin", null)).toBe(false);
+  });
+
+  it("restringe /portal a cliente_final", () => {
+    expect(isRoleAllowedForPath("/portal", "cliente_final")).toBe(true);
+    expect(isRoleAllowedForPath("/portal", "admin_bpo")).toBe(false);
+    expect(isRoleAllowedForPath("/portal/solicitacoes", "gestor_bpo")).toBe(false);
   });
 });

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   // Filtro por erpStatus: subquery em integracoes_erp para obter cliente_ids (Story 1.7)
-  let clienteIdsFiltro: string[] | null = null;
+  let clienteIdsFiltro: string[] = [];
   if (erpStatus === "nao_configurado") {
     const { data: comErp } = await supabase
       .from("integracoes_erp")

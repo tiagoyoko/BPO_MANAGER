@@ -60,6 +60,14 @@ export async function middleware(request: NextRequest) {
     .eq("id", session.user.id)
     .maybeSingle();
 
+  if (
+    profile?.role === "cliente_final" &&
+    request.nextUrl.pathname !== "/portal" &&
+    !request.nextUrl.pathname.startsWith("/portal/")
+  ) {
+    return NextResponse.redirect(new URL("/portal", request.url));
+  }
+
   if (!isRoleAllowedForPath(request.nextUrl.pathname, profile?.role)) {
     return NextResponse.redirect(new URL("/", request.url));
   }

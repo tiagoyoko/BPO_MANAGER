@@ -127,6 +127,21 @@ describe("PATCH /api/clientes/[clienteId]", () => {
     expect(json.error.code).toBe("FORBIDDEN");
   });
 
+  it("retorna 403 quando cliente_final de cliente-1 tenta acessar cliente-2", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(CLIENTE_FINAL);
+    const req = new Request("http://localhost/api/clientes/cliente-2", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ razaoSocial: "Outro Cliente" }),
+    });
+    const res = await PATCH(req as unknown as import("next/server").NextRequest, {
+      params: Promise.resolve({ clienteId: "cliente-2" }),
+    });
+    const json = await res.json();
+    expect(res.status).toBe(403);
+    expect(json.error.code).toBe("FORBIDDEN");
+  });
+
   it("retorna 200 e dados atualizados em sucesso", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
     const updated = {

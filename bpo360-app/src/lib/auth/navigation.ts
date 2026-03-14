@@ -7,8 +7,16 @@ const ROLE_ROUTE_RULES: Array<{
   allowedRoles: PapelBpo[];
 }> = [
   {
+    prefix: "/admin/usuarios",
+    allowedRoles: ["admin_bpo", "gestor_bpo"],
+  },
+  {
     prefix: "/admin",
     allowedRoles: ["admin_bpo"],
+  },
+  {
+    prefix: "/portal",
+    allowedRoles: ["cliente_final"],
   },
 ];
 

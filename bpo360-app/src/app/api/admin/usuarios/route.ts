@@ -7,11 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
-import { canManageUsers } from "@/lib/auth/rbac";
+import { canManageClienteUsers, canManageUsers } from "@/lib/auth/rbac";
 import type { PapelBpo } from "@/types/domain";
 import { validarClienteDoMesmoBpo } from "./_shared";
 
 const ROLES_INTERNOS: PapelBpo[] = ["admin_bpo", "gestor_bpo", "operador_bpo"];
+const ROLE_CLIENTE_FINAL: PapelBpo = "cliente_final";
 
 function rowToUsuario(row: Record<string, unknown>) {
   return {
@@ -25,7 +26,7 @@ function rowToUsuario(row: Record<string, unknown>) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json(
@@ -33,20 +34,48 @@ export async function GET() {
       { status: 401 }
     );
   }
-  if (!canManageUsers(user)) {
+
+  const requestUrl = new URL(request.url);
+  const tipo = requestUrl.searchParams.get("tipo") ?? "interno";
+  const clienteId = requestUrl.searchParams.get("clienteId");
+
+  if (!["interno", "cliente"].includes(tipo)) {
     return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
+      { data: null, error: { code: "BAD_REQUEST", message: "tipo inválido." } },
+      { status: 400 }
     );
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const baseQuery = supabase
     .from("usuarios")
     .select("id, nome, email, role, cliente_id, created_at, updated_at")
-    .eq("bpo_id", user.bpoId)
-    .neq("role", "cliente_final")
-    .order("nome", { ascending: true });
+    .eq("bpo_id", user.bpoId);
+
+  const query =
+    tipo === "cliente"
+      ? clienteId
+        ? baseQuery.eq("role", ROLE_CLIENTE_FINAL).eq("cliente_id", clienteId)
+        : baseQuery.eq("role", ROLE_CLIENTE_FINAL)
+      : baseQuery.neq("role", ROLE_CLIENTE_FINAL);
+
+  if (tipo === "cliente") {
+    if (!canManageClienteUsers(user)) {
+      return NextResponse.json(
+        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+        { status: 403 }
+      );
+    }
+  } else {
+    if (!canManageUsers(user)) {
+      return NextResponse.json(
+        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+        { status: 403 }
+      );
+    }
+  }
+
+  const { data, error } = await query.order("nome", { ascending: true });
 
   if (error) {
     return NextResponse.json(
@@ -67,14 +96,7 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (!canManageUsers(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
-
-  let body: { nome: string; email: string; role: PapelBpo; clienteId?: string };
+  let body: { nome?: string; email?: string; role?: PapelBpo; clienteId?: string };
   try {
     body = await request.json();
   } catch {
@@ -84,37 +106,83 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { nome, email, role } = body;
-  if (!nome?.trim() || !email?.trim() || !role) {
+  const nome = body.nome?.trim() ?? "";
+  const email = body.email?.trim().toLowerCase() ?? "";
+  const role = body.role;
+
+  if (!email || !role) {
     return NextResponse.json(
       {
         data: null,
         error: {
           code: "CAMPOS_OBRIGATORIOS",
-          message: "nome, email e role são obrigatórios.",
+          message: "email e role são obrigatórios.",
         },
       },
       { status: 400 }
     );
   }
 
-  if (!ROLES_INTERNOS.includes(role)) {
+  const isClienteFinal = role === ROLE_CLIENTE_FINAL;
+  if (!isClienteFinal && !nome) {
     return NextResponse.json(
       {
         data: null,
         error: {
-          code: "ROLE_INVALIDO",
-          message: "role deve ser admin_bpo, gestor_bpo ou operador_bpo.",
+          code: "CAMPOS_OBRIGATORIOS",
+          message: "nome é obrigatório para usuários internos.",
         },
       },
       { status: 400 }
     );
+  }
+
+  if (isClienteFinal) {
+    if (!canManageClienteUsers(user)) {
+      return NextResponse.json(
+        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+        { status: 403 }
+      );
+    }
+  } else {
+    if (!canManageUsers(user)) {
+      return NextResponse.json(
+        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+        { status: 403 }
+      );
+    }
+
+    if (!ROLES_INTERNOS.includes(role)) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: {
+            code: "ROLE_INVALIDO",
+            message: "role deve ser admin_bpo, gestor_bpo, operador_bpo ou cliente_final.",
+          },
+        },
+        { status: 400 }
+      );
+    }
   }
 
   const adminClient = createAdminClient();
   const serverClient = await createClient();
 
-  if (role === "operador_bpo" && body.clienteId) {
+  if (isClienteFinal && !body.clienteId?.trim()) {
+    return NextResponse.json(
+      {
+        data: null,
+        error: {
+          code: "CLIENTE_OBRIGATORIO",
+          message: "clienteId é obrigatório para usuário cliente_final.",
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  if ((role === "operador_bpo" || isClienteFinal) && body.clienteId) {
     const clienteValidation = await validarClienteDoMesmoBpo({
       supabase: serverClient,
       clienteId: body.clienteId,
@@ -126,9 +194,9 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
-    email: email.trim().toLowerCase(),
+    email,
     email_confirm: true,
-    user_metadata: { nome: nome.trim() },
+    user_metadata: { nome: nome || null },
   });
 
   if (createError || !authUser.user) {
@@ -148,9 +216,12 @@ export async function POST(request: NextRequest) {
     id: authUser.user.id,
     bpo_id: user.bpoId,
     role,
-    nome: nome.trim(),
-    email: email.trim().toLowerCase(),
-    cliente_id: role === "operador_bpo" && body.clienteId ? body.clienteId : null,
+    nome: nome || null,
+    email,
+    cliente_id:
+      role === "operador_bpo" || role === ROLE_CLIENTE_FINAL
+        ? (body.clienteId?.trim() ?? null)
+        : null,
     criado_por_id: user.id,
   };
 

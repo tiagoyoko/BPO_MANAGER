@@ -266,7 +266,8 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 </step>
 
 <step n="6" goal="Commit and merge when story is fully done" tag="git">
-  <critical>Only run when story is truly complete: status = done, no pending action items, no HIGH/MEDIUM issues left</critical>
+  <critical>When story status is `done`, commit and merge are mandatory. Do not end the workflow before attempting both.</critical>
+  <critical>Only skip git actions if this is not a git repository. If commit or merge fails, report the failure clearly and halt for user intervention.</critical>
 
   <check if="{{new_status}} != 'done'">
     <action>Skip this step — story not done, no commit/merge</action>
@@ -283,7 +284,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
       <action>Run `git status --porcelain` to see if there are uncommitted changes</action>
 
       <check if="there are uncommitted changes">
-        <action>Stage all changes: `git add .` (or stage paths from story File List if project prefers)</action>
+        <action>Stage the story changes required to complete the workflow. Prefer story-related paths and workflow-updated artifacts when possible; if the repo practice is to commit all current changes for the completed story, stage them explicitly.</action>
         <action>Commit with message: `Story {{story_key}}: review complete, status done`</action>
         <action>If commit fails (e.g. pre-commit hook), output error and HALT so user can resolve</action>
         <output>✅ **Commit:** changes committed on current branch</output>
@@ -297,10 +298,10 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
       <action>Detect default branch: `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null` (e.g. refs/remotes/origin/main → main) or assume `main`; fallback `master` → {{default_branch}}</action>
 
       <check if="current_branch equals default_branch (e.g. already on main)">
-        <output>ℹ️ Already on default branch ({{current_branch}}) — no merge needed</output>
+        <output>ℹ️ Already on default branch ({{current_branch}}) — commit completed and no merge is required</output>
       </check>
 
-      <check if="current_branch is a story branch (name starts with story/ or equals story/{{story_key}})">
+      <check if="current_branch does not equal default_branch">
         <action>Checkout default branch: `git checkout {{default_branch}}`</action>
         <action>Merge story branch into default: `git merge {{current_branch}} --no-edit`</action>
         <action>If merge fails (e.g. conflicts), output error and HALT so user can resolve</action>

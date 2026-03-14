@@ -63,7 +63,7 @@ describe("middleware", () => {
     expect(decodeURIComponent(location ?? "")).toContain("/clientes");
   });
 
-  it("redireciona para / quando sessão existe mas papel não permite /admin/*", async () => {
+  it("permite gestor_bpo em /admin/usuarios", async () => {
     vi.mocked(createServerClient).mockReturnValue({
       auth: {
         getSession: vi.fn().mockResolvedValue({
@@ -87,16 +87,16 @@ describe("middleware", () => {
     const request = createMockRequest("/admin/usuarios");
     const response = await middleware(request);
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toMatch(/\/$/);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
   });
 
-  it("permite acesso a /admin quando sessão tem role admin_bpo", async () => {
+  it("redireciona cliente_final ao tentar acessar /admin/usuarios", async () => {
     vi.mocked(createServerClient).mockReturnValue({
       auth: {
         getSession: vi.fn().mockResolvedValue({
           data: {
-            session: { user: { id: "admin-1" } },
+            session: { user: { id: "cliente-1" } },
           },
         }),
       },
@@ -104,7 +104,7 @@ describe("middleware", () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             maybeSingle: vi.fn().mockResolvedValue({
-              data: { role: "admin_bpo" },
+              data: { role: "cliente_final" },
             }),
           }),
         }),
@@ -113,6 +113,62 @@ describe("middleware", () => {
 
     const middleware = await loadMiddleware();
     const request = createMockRequest("/admin/usuarios");
+    const response = await middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/portal");
+  });
+
+  it("redireciona cliente_final para /portal ao tentar acessar /clientes", async () => {
+    vi.mocked(createServerClient).mockReturnValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: { user: { id: "cliente-1" } },
+          },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { role: "cliente_final" },
+            }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof createServerClient>);
+
+    const middleware = await loadMiddleware();
+    const request = createMockRequest("/clientes");
+    const response = await middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/portal");
+  });
+
+  it("permite acesso a /portal quando sessão tem role cliente_final", async () => {
+    vi.mocked(createServerClient).mockReturnValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: { user: { id: "cliente-1" } },
+          },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { role: "cliente_final" },
+            }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof createServerClient>);
+
+    const middleware = await loadMiddleware();
+    const request = createMockRequest("/portal");
     const response = await middleware(request);
 
     expect(response.status).toBe(200);

@@ -10,9 +10,17 @@ export type UsuarioListItem = {
   atualizadoEm: string;
 };
 
+export type ClienteOption = {
+  id: string;
+  nome: string;
+  cnpj: string;
+};
+
 type Props = {
   usuarios: UsuarioListItem[];
   onEdit: (u: UsuarioListItem) => void;
+  scope: "interno" | "cliente";
+  clientes?: ClienteOption[];
 };
 
 const ROLES_LABEL: Record<string, string> = {
@@ -21,17 +29,29 @@ const ROLES_LABEL: Record<string, string> = {
   operador_bpo: "Operador",
 };
 
-export function UsuariosTable({ usuarios, onEdit }: Props) {
+export function UsuariosTable({
+  usuarios,
+  onEdit,
+  scope,
+  clientes = [],
+}: Props) {
   if (usuarios.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        Nenhum usuário interno cadastrado.
+        {scope === "cliente"
+          ? "Nenhum usuário de cliente cadastrado."
+          : "Nenhum usuário interno cadastrado."}
       </p>
     );
   }
 
+  const clientesMap = new Map(clientes.map((cliente) => [cliente.id, cliente]));
+
   return (
-    <div role="region" aria-label="Lista de usuários internos">
+    <div
+      role="region"
+      aria-label={scope === "cliente" ? "Lista de usuários de clientes" : "Lista de usuários internos"}
+    >
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b text-left">
@@ -44,6 +64,11 @@ export function UsuariosTable({ usuarios, onEdit }: Props) {
             <th scope="col" className="py-2 pr-4 font-medium">
               Papel
             </th>
+            {scope === "cliente" && (
+              <th scope="col" className="py-2 pr-4 font-medium">
+                Cliente
+              </th>
+            )}
             <th scope="col" className="py-2 pr-4 font-medium">
               Criado em
             </th>
@@ -58,6 +83,13 @@ export function UsuariosTable({ usuarios, onEdit }: Props) {
               <td className="py-2 pr-4">{u.nome ?? "—"}</td>
               <td className="py-2 pr-4">{u.email ?? "—"}</td>
               <td className="py-2 pr-4">{ROLES_LABEL[u.role] ?? u.role}</td>
+              {scope === "cliente" && (
+                <td className="py-2 pr-4">
+                  {u.clienteId
+                    ? `${clientesMap.get(u.clienteId)?.nome ?? u.clienteId} · ${clientesMap.get(u.clienteId)?.cnpj ?? "CNPJ não carregado"}`
+                    : "—"}
+                </td>
+              )}
               <td className="py-2 pr-4">
                 {u.criadoEm ? new Date(u.criadoEm).toLocaleDateString("pt-BR") : "—"}
               </td>

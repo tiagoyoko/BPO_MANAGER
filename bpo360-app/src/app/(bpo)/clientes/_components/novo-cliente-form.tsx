@@ -108,8 +108,7 @@ export function NovoClienteForm({ onSuccess, onCancel, onFeedback, clienteInicia
       responsavelInternoId: campos.responsavelInternoId?.trim() || null,
       receitaEstimada:
         campos.receitaEstimada !== undefined &&
-        campos.receitaEstimada !== null &&
-        campos.receitaEstimada !== ""
+        campos.receitaEstimada !== null
           ? Number(campos.receitaEstimada)
           : null,
       tags,
