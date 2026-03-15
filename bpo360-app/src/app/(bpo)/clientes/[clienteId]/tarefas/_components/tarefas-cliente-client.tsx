@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,20 +67,17 @@ export function TarefasClienteClient({ clienteId }: Props) {
     [year, month]
   );
 
-  const fetchTarefas = useMemo(
-    () => () => {
-      const params = new URLSearchParams({ dataInicio, dataFim });
-      if (status) params.set("status", status);
-      if (responsavelId) params.set("responsavelId", responsavelId);
-      if (prioridade) params.set("prioridade", prioridade);
-      if (tipo) params.set("tipo", tipo);
-      if (comSolicitacoesAbertas) params.set("comSolicitacoesAbertas", "true");
-      return fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
-        .then((r) => r.json())
-        .then((json) => setTarefas(json.data?.tarefas ?? []));
-    },
-    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, tipo, comSolicitacoesAbertas]
-  );
+  const fetchTarefas = useCallback(() => {
+    const params = new URLSearchParams({ dataInicio, dataFim });
+    if (status) params.set("status", status);
+    if (responsavelId) params.set("responsavelId", responsavelId);
+    if (prioridade) params.set("prioridade", prioridade);
+    if (tipo) params.set("tipo", tipo);
+    if (comSolicitacoesAbertas) params.set("comSolicitacoesAbertas", "true");
+    return fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
+      .then((r) => r.json())
+      .then((json) => setTarefas(json.data?.tarefas ?? []));
+  }, [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, tipo, comSolicitacoesAbertas]);
 
   useEffect(() => {
     let cancelled = false;
