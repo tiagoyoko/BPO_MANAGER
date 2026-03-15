@@ -326,7 +326,7 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
               <ul className="text-sm space-y-1">
                 {tarefa.historico.map((h) => (
                   <li key={h.id}>
-                    {h.usuarioNome ?? "Usuário"} {h.acao === "marcar" ? "marcou" : "desmarcou"} "{h.itemTitulo}" em{" "}
+                    {h.usuarioNome ?? "Usuário"} {h.acao === "marcar" ? "marcou" : "desmarcou"} &quot;{h.itemTitulo}&quot; em{" "}
                     {new Date(h.ocorridoEm).toLocaleString("pt-BR")}
                   </li>
                 ))}

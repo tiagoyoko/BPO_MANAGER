@@ -3,7 +3,7 @@
 /**
  * Story 3.4: Seção reutilizável "Documentos" — lista (nome, tipo, tamanho, data, autor) + Adicionar arquivo + download/preview.
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DocumentoItem } from "@/types/documentos";
@@ -51,7 +51,7 @@ export function DocumentosSection({ listAndUploadUrl, title = "Documentos" }: Pr
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -67,11 +67,11 @@ export function DocumentosSection({ listAndUploadUrl, title = "Documentos" }: Pr
     } finally {
       setLoading(false);
     }
-  }
+  }, [listAndUploadUrl]);
 
   useEffect(() => {
-    carregar();
-  }, [listAndUploadUrl]);
+    void carregar();
+  }, [carregar]);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

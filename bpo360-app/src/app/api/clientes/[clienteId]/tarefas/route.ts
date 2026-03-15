@@ -250,7 +250,7 @@ export async function GET(
 
   // Story 3.6: marcar tarefas que têm ≥1 solicitação aberta (para badge na lista)
   const tarefaIds = list.map((r) => r.id);
-  let idsComSolicitacaoAberta = new Set<string>();
+  const idsComSolicitacaoAberta = new Set<string>();
   if (tarefaIds.length > 0) {
     const { data: solAbertas } = await supabase
       .from("solicitacoes")
