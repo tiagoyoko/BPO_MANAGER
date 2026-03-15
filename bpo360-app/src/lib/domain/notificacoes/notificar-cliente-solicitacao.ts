@@ -13,6 +13,8 @@ export type PayloadNotificacaoSolicitacao = {
   solicitacaoId: string;
   tipoEvento: TipoEventoNotificacao;
   destinatarioEmails: string[];
+  portalPath: string;
+  resumo: string;
 };
 
 /** Feature flag: notificações por e-mail ativas globalmente (env). */
@@ -70,7 +72,6 @@ export function enviarNotificacaoSolicitacaoAtualizada(
   payload: PayloadNotificacaoSolicitacao
 ): void {
   if (process.env.NODE_ENV !== "test") {
-    // eslint-disable-next-line no-console
     console.info("[notificacoes] solicitacao_atualizada", payload);
   }
   // Futuro: enfileirar job ou chamar Edge Function / Resend com payload.destinatarioEmails
@@ -98,10 +99,18 @@ export async function notificarClienteSolicitacaoAtualizada(
   const destinatarioEmails = await obterEmailsDestino(supabase, params.clienteId);
   if (destinatarioEmails.length === 0) return;
 
+  const portalPath = `/portal/solicitacoes/${params.solicitacaoId}`;
+  const resumo =
+    params.tipoEvento === "comentario"
+      ? `Sua solicitacao #${params.solicitacaoId} recebeu uma nova resposta.`
+      : `Sua solicitacao #${params.solicitacaoId} teve o status atualizado.`;
+
   enviarNotificacaoSolicitacaoAtualizada({
     clienteId: params.clienteId,
     solicitacaoId: params.solicitacaoId,
     tipoEvento: params.tipoEvento,
     destinatarioEmails,
+    portalPath,
+    resumo,
   });
 }

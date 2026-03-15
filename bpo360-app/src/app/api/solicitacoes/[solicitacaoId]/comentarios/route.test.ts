@@ -13,6 +13,11 @@ const { getCurrentUser } = await import("@/lib/auth/get-current-user") as {
 const { createClient } = await import("@/lib/supabase/server") as {
   createClient: ReturnType<typeof vi.fn>;
 };
+const { notificarClienteSolicitacaoAtualizada } = await import(
+  "@/lib/domain/notificacoes/notificar-cliente-solicitacao"
+) as {
+  notificarClienteSolicitacaoAtualizada: ReturnType<typeof vi.fn>;
+};
 
 const { POST } = await import("./route");
 
@@ -29,6 +34,8 @@ describe("POST /api/solicitacoes/[solicitacaoId]/comentarios", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(createClient).mockReset();
+    vi.mocked(notificarClienteSolicitacaoAtualizada).mockReset();
+    vi.mocked(notificarClienteSolicitacaoAtualizada).mockResolvedValue(undefined);
   });
 
   it("retorna 401 quando não autenticado", async () => {
@@ -69,7 +76,6 @@ describe("POST /api/solicitacoes/[solicitacaoId]/comentarios", () => {
       autor_id: "user-1",
       created_at: "2026-03-14T12:00:00Z",
     };
-    let fromCall = 0;
     const fromMock = vi.fn().mockImplementation((table: string) => {
       if (table === "solicitacoes") {
         return {
@@ -79,7 +85,6 @@ describe("POST /api/solicitacoes/[solicitacaoId]/comentarios", () => {
         };
       }
       if (table === "comentarios") {
-        fromCall++;
         return {
           insert: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
@@ -104,5 +109,53 @@ describe("POST /api/solicitacoes/[solicitacaoId]/comentarios", () => {
     expect(json.data.id).toBe("com-1");
     expect(json.data.texto).toBe("Resposta");
     expect(json.data.solicitacaoId).toBe("sol-1");
+    expect(notificarClienteSolicitacaoAtualizada).not.toHaveBeenCalled();
+  });
+
+  it("dispara notificação quando comentário responde solicitação do cliente", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const solRow = { id: "sol-1", cliente_id: "cliente-1", origem: "cliente" };
+    const comentarioRow = {
+      id: "com-1",
+      solicitacao_id: "sol-1",
+      texto: "Resposta",
+      autor_id: "user-1",
+      created_at: "2026-03-14T12:00:00Z",
+    };
+    const fromMock = vi.fn().mockImplementation((table: string) => {
+      if (table === "solicitacoes") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: solRow, error: null }),
+        };
+      }
+      if (table === "comentarios") {
+        return {
+          insert: vi.fn().mockReturnThis(),
+          select: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: comentarioRow, error: null }),
+        };
+      }
+      return {};
+    });
+    const supabase = { from: fromMock } as never;
+    vi.mocked(createClient).mockResolvedValue(supabase);
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/solicitacoes/sol-1/comentarios", {
+        method: "POST",
+        body: JSON.stringify({ texto: "Resposta" }),
+      }),
+      { params: Promise.resolve({ solicitacaoId: "sol-1" }) }
+    );
+
+    expect(res.status).toBe(201);
+    expect(notificarClienteSolicitacaoAtualizada).toHaveBeenCalledWith(supabase, {
+      clienteId: "cliente-1",
+      solicitacaoId: "sol-1",
+      tipoEvento: "comentario",
+      origemSolicitacao: "cliente",
+    });
   });
 });

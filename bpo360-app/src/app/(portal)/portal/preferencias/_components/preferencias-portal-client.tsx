@@ -30,7 +30,7 @@ export function PreferenciasPortalClient({
           return;
         }
         setPreferencias(json.data ?? null);
-      } catch (e) {
+      } catch {
         if (!cancelled) setError("Falha ao carregar preferências.");
       } finally {
         if (!cancelled) setLoading(false);

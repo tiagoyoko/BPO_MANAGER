@@ -13,6 +13,11 @@ const { getCurrentUser } = await import("@/lib/auth/get-current-user") as {
 const { createClient } = await import("@/lib/supabase/server") as {
   createClient: ReturnType<typeof vi.fn>;
 };
+const { notificarClienteSolicitacaoAtualizada } = await import(
+  "@/lib/domain/notificacoes/notificar-cliente-solicitacao"
+) as {
+  notificarClienteSolicitacaoAtualizada: ReturnType<typeof vi.fn>;
+};
 
 const { GET, PATCH } = await import("./route");
 
@@ -47,6 +52,8 @@ describe("GET /api/solicitacoes/[solicitacaoId]", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(createClient).mockReset();
+    vi.mocked(notificarClienteSolicitacaoAtualizada).mockReset();
+    vi.mocked(notificarClienteSolicitacaoAtualizada).mockResolvedValue(undefined);
   });
 
   it("retorna 401 quando não autenticado", async () => {
@@ -185,5 +192,42 @@ describe("PATCH /api/solicitacoes/[solicitacaoId]", () => {
     expect(res.status).toBe(200);
     expect(json.error).toBeNull();
     expect(json.data.status).toBe("resolvida");
+    expect(notificarClienteSolicitacaoAtualizada).not.toHaveBeenCalled();
+  });
+
+  it("dispara notificação quando status muda em solicitação de origem cliente", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const currentRow = { id: "sol-1", cliente_id: "cliente-1", status: "aberta", origem: "cliente" };
+    const updatedRow = { ...SOLICITACAO_ROW, status: "resolvida", origem: "cliente" };
+    const maybeSingle = vi.fn().mockResolvedValue({ data: currentRow, error: null });
+    const single = vi.fn().mockResolvedValue({ data: updatedRow, error: null });
+    const updateChain = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) });
+    const selectChain = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ maybeSingle, single }),
+      }),
+    });
+    const fromMock = vi.fn().mockReturnValue({
+      select: selectChain,
+      update: updateChain,
+    });
+    const supabase = { from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>;
+    vi.mocked(createClient).mockResolvedValue(supabase);
+
+    const res = await PATCH(
+      new NextRequest("http://localhost/api/solicitacoes/sol-1", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "resolvida" }),
+      }),
+      { params: Promise.resolve({ solicitacaoId: "sol-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(notificarClienteSolicitacaoAtualizada).toHaveBeenCalledWith(supabase, {
+      clienteId: "cliente-1",
+      solicitacaoId: "sol-1",
+      tipoEvento: "status_alterado",
+      origemSolicitacao: "cliente",
+    });
   });
 });

@@ -11,6 +11,8 @@ const {
   notificarClienteSolicitacaoAtualizada,
 } = await import("./notificar-cliente-solicitacao");
 
+const infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
 describe("notificacoesEmailAtivas", () => {
   let orig: string | undefined;
   beforeEach(() => {
@@ -111,6 +113,8 @@ describe("enviarNotificacaoSolicitacaoAtualizada", () => {
         solicitacaoId: "sol1",
         tipoEvento: "comentario",
         destinatarioEmails: ["a@b.com"],
+        portalPath: "/portal/solicitacoes/sol1",
+        resumo: "Sua solicitacao #sol1 recebeu uma nova resposta.",
       });
     }).not.toThrow();
   });
@@ -119,6 +123,7 @@ describe("enviarNotificacaoSolicitacaoAtualizada", () => {
 describe("notificarClienteSolicitacaoAtualizada", () => {
   beforeEach(() => {
     mockFrom.mockReset();
+    infoSpy.mockClear();
   });
 
   it("não faz nada quando origem não é cliente", async () => {
@@ -129,5 +134,87 @@ describe("notificarClienteSolicitacaoAtualizada", () => {
       origemSolicitacao: "interno",
     });
     expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it("não envia quando notificações globais estão desativadas", async () => {
+    const orig = process.env.NOTIFICACOES_EMAIL_ATIVO;
+    process.env.NOTIFICACOES_EMAIL_ATIVO = "false";
+
+    await notificarClienteSolicitacaoAtualizada(mockSupabase as never, {
+      clienteId: "c1",
+      solicitacaoId: "sol1",
+      tipoEvento: "comentario",
+      origemSolicitacao: "cliente",
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+    process.env.NOTIFICACOES_EMAIL_ATIVO = orig;
+  });
+
+  it("não envia quando cliente desabilitou notificações", async () => {
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { notificar_por_email: false },
+        error: null,
+      }),
+    });
+
+    await notificarClienteSolicitacaoAtualizada(mockSupabase as never, {
+      clienteId: "c1",
+      solicitacaoId: "sol1",
+      tipoEvento: "comentario",
+      origemSolicitacao: "cliente",
+    });
+
+    expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  it("gera payload com resumo e link do portal quando deve notificar", async () => {
+    const origNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    let call = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "cliente_preferencias") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+
+      if (table === "usuarios") {
+        call += 1;
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          not: vi.fn().mockResolvedValue({
+            data: [{ email: "cliente@empresa.com" }],
+            error: null,
+          }),
+        };
+      }
+
+      return {};
+    });
+
+    await notificarClienteSolicitacaoAtualizada(mockSupabase as never, {
+      clienteId: "c1",
+      solicitacaoId: "sol1",
+      tipoEvento: "status_alterado",
+      origemSolicitacao: "cliente",
+    });
+
+    expect(call).toBe(1);
+    expect(infoSpy).toHaveBeenCalledWith("[notificacoes] solicitacao_atualizada", {
+      clienteId: "c1",
+      solicitacaoId: "sol1",
+      tipoEvento: "status_alterado",
+      destinatarioEmails: ["cliente@empresa.com"],
+      portalPath: "/portal/solicitacoes/sol1",
+      resumo: "Sua solicitacao #sol1 teve o status atualizado.",
+    });
+    process.env.NODE_ENV = origNodeEnv;
   });
 });

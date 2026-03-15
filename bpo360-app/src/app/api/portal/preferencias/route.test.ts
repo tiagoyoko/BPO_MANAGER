@@ -35,7 +35,6 @@ describe("GET /api/portal/preferencias", () => {
       clienteId: null,
     });
     const res = await GET();
-    const json = await res.json();
     expect(res.status).toBe(403);
   });
 
