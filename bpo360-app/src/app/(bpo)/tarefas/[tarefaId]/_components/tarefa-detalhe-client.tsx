@@ -266,6 +266,39 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
             )}
           </section>
 
+          <section aria-labelledby="solicitacoes-heading">
+            <h2 id="solicitacoes-heading" className="text-lg font-medium mb-2">
+              Solicitações relacionadas
+            </h2>
+            {!tarefa.solicitacoesRelacionadas?.length ? (
+              <p className="text-sm text-muted-foreground">Nenhuma solicitação vinculada a esta tarefa.</p>
+            ) : (
+              <>
+                {tarefa.solicitacoesAbertasCount != null && tarefa.solicitacoesAbertasCount > 0 && (
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {tarefa.solicitacoesAbertasCount} solicitação(ões) aberta(s).
+                  </p>
+                )}
+                <ul className="space-y-1 text-sm">
+                  {tarefa.solicitacoesRelacionadas.map((s) => (
+                    <li key={s.id}>
+                      <Link
+                        href={`/solicitacoes/${s.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {s.titulo}
+                      </Link>
+                      <span className="text-muted-foreground ml-2">({s.status})</span>
+                      <span className="text-muted-foreground text-xs ml-2">
+                        aberta em {new Date(s.dataAbertura).toLocaleDateString("pt-BR")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+
           <section aria-labelledby="documentos-heading">
             <h2 id="documentos-heading" className="sr-only">
               Documentos
