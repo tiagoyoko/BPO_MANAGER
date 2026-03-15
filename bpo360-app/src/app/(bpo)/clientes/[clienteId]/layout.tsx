@@ -60,6 +60,12 @@ export default async function ClienteLayout({
                 Tarefas
               </Link>
               <Link
+                href={`/clientes/${clienteId}/timeline`}
+                className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
+              >
+                Comunicação
+              </Link>
+              <Link
                 href={`/clientes/${clienteId}/config`}
                 className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
               >
