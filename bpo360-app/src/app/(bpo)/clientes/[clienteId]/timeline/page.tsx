@@ -5,7 +5,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
-import type { EventoTimeline } from "@/app/api/clientes/[clienteId]/timeline/route";
+import type { EventoTimeline, SolicitacaoRow, ComentarioRow } from "@/app/api/clientes/[clienteId]/timeline/route";
 import { TimelineList } from "./_components/timeline-list";
 
 export const dynamic = "force-dynamic";
@@ -27,16 +27,7 @@ async function carregarTimeline(
 
   const eventos: EventoTimeline[] = [];
 
-  type SolRow = {
-    id: string;
-    titulo: string;
-    created_at: string;
-    criado_por_id: string | null;
-    origem: string;
-    usuarios: { nome: string | null } | null;
-  };
-
-  for (const row of (solicitacoes ?? []) as SolRow[]) {
+  for (const row of (solicitacoes ?? []) as unknown as SolicitacaoRow[]) {
     const autorTipo = row.origem === "cliente" ? "cliente" : "interno";
     eventos.push({
       id: `sol-${row.id}`,
@@ -51,18 +42,9 @@ async function carregarTimeline(
   }
 
   // Buscar IDs de solicitações do cliente para filtrar comentários
-  const idssolicitacoes = (solicitacoes ?? []).map((r) => (r as SolRow).id);
+  const idssolicitacoes = (solicitacoes ?? []).map((r) => (r as unknown as SolicitacaoRow).id);
 
   if (idssolicitacoes.length > 0) {
-    type ComRow = {
-      id: string;
-      texto: string;
-      created_at: string;
-      solicitacao_id: string;
-      autor_id: string | null;
-      usuarios: { nome: string | null } | null;
-    };
-
     const { data: comentarios, error: comError } = await supabase
       .from("comentarios")
       .select("id, texto, created_at, solicitacao_id, autor_id, usuarios:autor_id(nome)")
@@ -72,7 +54,7 @@ async function carregarTimeline(
 
     if (comError) throw new Error(comError.message);
 
-    for (const row of (comentarios ?? []) as ComRow[]) {
+    for (const row of (comentarios ?? []) as unknown as ComentarioRow[]) {
       eventos.push({
         id: `com-${row.id}`,
         tipo: "comentario",
@@ -119,7 +101,8 @@ export default async function TimelinePage({
 
   try {
     eventos = await carregarTimeline(supabase, user.bpoId, clienteId);
-  } catch {
+  } catch (err) {
+    console.error("[TimelinePage] Erro ao carregar timeline:", err);
     erroMsg = "Erro ao carregar a timeline. Tente novamente.";
   }
 

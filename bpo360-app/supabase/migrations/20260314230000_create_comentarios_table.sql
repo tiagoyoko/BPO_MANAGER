@@ -37,3 +37,6 @@ CREATE POLICY "comentarios_insert_same_bpo"
     AND public.get_my_role() IN ('admin_bpo', 'gestor_bpo', 'operador_bpo')
     AND autor_id = auth.uid()
   );
+
+-- UPDATE/DELETE: Intencionalmente omitidos — comentários são imutáveis nesta versão.
+-- Adicionar políticas de UPDATE/DELETE apenas se requisito de edição/exclusão for implementado.

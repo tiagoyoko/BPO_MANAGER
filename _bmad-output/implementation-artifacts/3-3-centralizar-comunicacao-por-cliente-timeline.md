@@ -1,6 +1,6 @@
 # Story 3.3: Centralizar comunicação por cliente (timeline)
 
-Status: review
+Status: done
 
 <!-- Validação opcional: executar validate-create-story antes de dev-story. -->
 

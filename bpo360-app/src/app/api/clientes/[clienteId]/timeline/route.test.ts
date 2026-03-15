@@ -367,11 +367,20 @@ describe("GET /api/clientes/[clienteId]/timeline", () => {
           };
         }
         if (table === "solicitacoes") {
+          // Comentários pertencem a solicitações; mock retorna a solicitação pai para fornecer os IDs.
+          const solPai = {
+            id: "sol-1",
+            titulo: "Solicitação pai",
+            created_at: "2026-03-14T10:00:00Z",
+            criado_por_id: "user-1",
+            origem: "interno",
+            usuarios: { nome: "Operador" },
+          };
           return {
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  order: vi.fn().mockResolvedValue({ data: [], error: null }),
+                  order: vi.fn().mockResolvedValue({ data: [solPai], error: null }),
                 }),
               }),
             }),
@@ -400,6 +409,7 @@ describe("GET /api/clientes/[clienteId]/timeline", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
+    // O comentário mais recente (11:00) vem antes da solicitação pai (10:00)
     const evento = json.data.eventos[0];
     expect(evento.tipo).toBe("comentario");
     expect(evento.tituloOuResumo.length).toBeLessThanOrEqual(121); // 120 chars + "…"

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 3-5 done (code review)
+last_updated: "2026-03-14"  # 3-3 → done (code review)
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -65,7 +65,7 @@ development_status:
   epic-3: in-progress
   3-1-abrir-solicitacao-para-um-cliente: done
   3-2-cliente-enviar-solicitacao-e-documentos-pelo-portal: done
-  3-3-centralizar-comunicacao-por-cliente-timeline: review
+  3-3-centralizar-comunicacao-por-cliente-timeline: done
   3-4-anexar-documentos-a-tarefas-e-solicitacoes: done
   3-5-notificacao-de-atualizacao-para-o-cliente: done
   3-6-vincular-comunicacao-as-rotinas-e-indicadores: done
