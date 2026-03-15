@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DocumentosSection } from "@/components/documentos-section";
 import type { TarefaDetalhe } from "@/lib/domain/rotinas/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -263,6 +264,16 @@ export function TarefaDetalheClient({ tarefaId }: Props) {
                 </div>
               </div>
             )}
+          </section>
+
+          <section aria-labelledby="documentos-heading">
+            <h2 id="documentos-heading" className="sr-only">
+              Documentos
+            </h2>
+            <DocumentosSection
+              listAndUploadUrl={`/api/tarefas/${tarefaId}/documentos`}
+              title="Documentos"
+            />
           </section>
 
           <section aria-labelledby="comentarios-heading">
