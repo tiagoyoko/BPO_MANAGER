@@ -11,6 +11,7 @@ import type {
   TarefaDetalhe,
   TarefaChecklistItem,
   TarefaHistoricoItem,
+  SolicitacaoRelacionada,
   StatusTarefa,
 } from "@/lib/domain/rotinas/types";
 
@@ -207,6 +208,25 @@ export async function GET(
     ocorridoEm: entry.ocorrido_em,
   }));
 
+  // Story 3.6: solicitações vinculadas à tarefa (tarefa_id = tarefaId, mesmo bpo)
+  type SolicitacaoRow = { id: string; titulo: string; status: string; created_at: string };
+  const { data: solicitacoesRows } = await supabase
+    .from("solicitacoes")
+    .select("id, titulo, status, created_at")
+    .eq("tarefa_id", tarefaId)
+    .eq("bpo_id", user.bpoId)
+    .order("created_at", { ascending: false });
+
+  const solicitacoesRelacionadas: SolicitacaoRelacionada[] = ((solicitacoesRows ?? []) as SolicitacaoRow[]).map(
+    (s) => ({
+      id: s.id,
+      titulo: s.titulo,
+      status: s.status,
+      dataAbertura: s.created_at,
+    })
+  );
+  const solicitacoesAbertasCount = solicitacoesRelacionadas.filter((s) => s.status === "aberta").length;
+
   const data: TarefaDetalhe = {
     id: t.id,
     titulo: t.titulo,
@@ -222,6 +242,8 @@ export async function GET(
     checklist,
     comentarios: [],
     historico,
+    solicitacoesRelacionadas,
+    solicitacoesAbertasCount,
   };
 
   return NextResponse.json({ data, error: null });

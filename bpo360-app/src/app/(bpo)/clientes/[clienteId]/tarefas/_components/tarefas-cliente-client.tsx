@@ -60,6 +60,7 @@ export function TarefasClienteClient({ clienteId }: Props) {
   const [calendarMode, setCalendarMode] = useState<"mensal" | "semanal">("mensal");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [tipo, setTipo] = useState<string>("");
+  const [comSolicitacoesAbertas, setComSolicitacoesAbertas] = useState(false);
 
   const { dataInicio, dataFim } = useMemo(
     () => getMonthStartEnd(year, month),
@@ -73,11 +74,12 @@ export function TarefasClienteClient({ clienteId }: Props) {
       if (responsavelId) params.set("responsavelId", responsavelId);
       if (prioridade) params.set("prioridade", prioridade);
       if (tipo) params.set("tipo", tipo);
+      if (comSolicitacoesAbertas) params.set("comSolicitacoesAbertas", "true");
       return fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
         .then((r) => r.json())
         .then((json) => setTarefas(json.data?.tarefas ?? []));
     },
-    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, tipo]
+    [clienteId, dataInicio, dataFim, status, responsavelId, prioridade, tipo, comSolicitacoesAbertas]
   );
 
   useEffect(() => {
@@ -453,6 +455,14 @@ export function TarefasClienteClient({ clienteId }: Props) {
               <option key={value} value={value}>{value}</option>
             ))}
           </select>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <Checkbox
+              checked={comSolicitacoesAbertas}
+              onCheckedChange={(c) => setComSolicitacoesAbertas(c === true)}
+              aria-label="Com solicitações abertas"
+            />
+            Com solicitações abertas
+          </label>
         </div>
       </div>
 
@@ -499,6 +509,9 @@ export function TarefasClienteClient({ clienteId }: Props) {
                                   <Badge variant="secondary" className="text-xs">
                                     {STATUS_LABEL[t.status] ?? t.status}
                                   </Badge>
+                                  {t.comSolicitacoesAbertas && (
+                                    <Badge variant="outline" className="text-xs ml-0.5">Solicitações abertas</Badge>
+                                  )}
                                 </li>
                               ))}
                             </ul>
@@ -531,6 +544,9 @@ export function TarefasClienteClient({ clienteId }: Props) {
                               <Badge variant="secondary" className="mt-1 text-xs">
                                 {STATUS_LABEL[t.status] ?? t.status}
                               </Badge>
+                              {t.comSolicitacoesAbertas && (
+                                <Badge variant="outline" className="mt-1 text-xs ml-0.5">Solicitações abertas</Badge>
+                              )}
                             </li>
                           ))
                         )}
@@ -599,6 +615,9 @@ export function TarefasClienteClient({ clienteId }: Props) {
                           <Badge variant="secondary">
                             {STATUS_LABEL[t.status] ?? t.status}
                           </Badge>
+                          {t.comSolicitacoesAbertas && (
+                            <Badge variant="outline">Solicitações abertas</Badge>
+                          )}
                           <Badge variant="outline">
                             {PRIORIDADE_LABEL[t.prioridade] ?? t.prioridade}
                           </Badge>

@@ -138,7 +138,7 @@ export type RotinaClienteRow = {
 
 // ─── Story 2.3: Listagem e detalhe de tarefas ─────────────────────────────────
 
-/** Item de tarefa na listagem (API). */
+/** Item de tarefa na listagem (API). Story 3.6: indicador de solicitações abertas. */
 export type TarefaListItem = {
   id: string;
   titulo: string;
@@ -150,6 +150,16 @@ export type TarefaListItem = {
   responsavelNome: string | null;
   clienteId: string;
   rotinaClienteId: string | null;
+  /** true quando existe ≥1 solicitação com status 'aberta' e tarefa_id = tarefa.id */
+  comSolicitacoesAbertas?: boolean;
+};
+
+/** Solicitação relacionada à tarefa (Story 3.6). */
+export type SolicitacaoRelacionada = {
+  id: string;
+  titulo: string;
+  status: string;
+  dataAbertura: string;
 };
 
 /** Item de checklist no detalhe da tarefa (API). */
@@ -175,7 +185,7 @@ export type TarefaHistoricoItem = {
   ocorridoEm: string;
 };
 
-/** Detalhe de tarefa (API). */
+/** Detalhe de tarefa (API). Story 3.6: solicitações vinculadas à tarefa. */
 export type TarefaDetalhe = {
   id: string;
   titulo: string;
@@ -191,4 +201,8 @@ export type TarefaDetalhe = {
   checklist: TarefaChecklistItem[];
   comentarios?: unknown[];
   historico?: TarefaHistoricoItem[];
+  /** Solicitações com tarefa_id = esta tarefa (Story 3.6). */
+  solicitacoesRelacionadas?: SolicitacaoRelacionada[];
+  /** Número de solicitações com status 'aberta' vinculadas a esta tarefa. */
+  solicitacoesAbertasCount?: number;
 };

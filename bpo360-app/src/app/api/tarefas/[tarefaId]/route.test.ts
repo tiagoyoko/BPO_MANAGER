@@ -64,10 +64,16 @@ const HISTORICO_ROWS = [
   },
 ];
 
+const SOLICITACOES_ROWS = [
+  { id: "sol-1", titulo: "Doc pendente", status: "aberta", created_at: "2026-03-14T09:00:00Z" },
+  { id: "sol-2", titulo: "Dúvida", status: "resolvida", created_at: "2026-03-13T10:00:00Z" },
+];
+
 function createSupabaseForGetTarefa(
   tarefa: unknown = TAREFA_ROW,
   checklist: unknown[] = CHECKLIST_ROWS,
-  historico: unknown[] = HISTORICO_ROWS
+  historico: unknown[] = HISTORICO_ROWS,
+  solicitacoes: unknown[] = SOLICITACOES_ROWS
 ) {
   const maybeSingle = vi.fn().mockResolvedValue({ data: tarefa, error: null });
   const from = vi.fn().mockImplementation((table: string) => {
@@ -98,6 +104,17 @@ function createSupabaseForGetTarefa(
           }),
           eq: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({ data: { nome: "Operador" }, error: null }),
+          }),
+        }),
+      };
+    }
+    if (table === "solicitacoes") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: solicitacoes, error: null }),
+            }),
           }),
         }),
       };
@@ -172,6 +189,29 @@ describe("GET /api/tarefas/[tarefaId]", () => {
     const json = await res.json();
     expect(res.status).toBe(403);
     expect(json.error?.code).toBe("FORBIDDEN");
+  });
+
+  it("retorna 200 com solicitacoesRelacionadas e solicitacoesAbertasCount (Story 3.6)", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    const supabase = createSupabaseForGetTarefa();
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/tarefas/tarefa-1"),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.solicitacoesRelacionadas).toBeDefined();
+    expect(json.data.solicitacoesRelacionadas).toHaveLength(2);
+    expect(json.data.solicitacoesRelacionadas[0]).toMatchObject({
+      id: "sol-1",
+      titulo: "Doc pendente",
+      status: "aberta",
+    });
+    expect(json.data.solicitacoesRelacionadas[0].dataAbertura).toBeDefined();
+    expect(json.data.solicitacoesAbertasCount).toBe(1);
   });
 
   it("retorna 404 quando tarefa não existe ou é de outro BPO", async () => {

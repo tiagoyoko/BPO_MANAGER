@@ -75,6 +75,7 @@ export async function GET(
   const responsavelId = (searchParams.get("responsavelId") ?? "").trim() || null;
   const prioridadeParam = (searchParams.get("prioridade") ?? "").trim();
   const tipoParam = (searchParams.get("tipo") ?? "").trim();
+  const comSolicitacoesAbertas = searchParams.get("comSolicitacoesAbertas") === "true";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   const offset = (page - 1) * limit;
@@ -138,6 +139,26 @@ export async function GET(
     }
   }
 
+  // Story 3.6: filtrar tarefas que têm ≥1 solicitação aberta (tarefa_id = tarefa.id)
+  let tarefaIdsComSolicitacaoAberta: string[] | null = null;
+  if (comSolicitacoesAbertas) {
+    const { data: solRows } = await supabase
+      .from("solicitacoes")
+      .select("tarefa_id")
+      .eq("bpo_id", user.bpoId)
+      .eq("cliente_id", clienteId)
+      .eq("status", "aberta")
+      .not("tarefa_id", "is", null);
+    const ids = [...new Set(((solRows ?? []) as { tarefa_id: string }[]).map((r) => r.tarefa_id).filter(Boolean))];
+    if (ids.length === 0) {
+      return NextResponse.json({
+        data: { tarefas: [], total: 0, page, limit },
+        error: null,
+      });
+    }
+    tarefaIdsComSolicitacaoAberta = ids;
+  }
+
   let query = supabase
     .from("tarefas")
     .select("id, titulo, data_vencimento, status, prioridade, responsavel_id, cliente_id, rotina_cliente_id", {
@@ -152,6 +173,7 @@ export async function GET(
   if (responsavelId) query = query.eq("responsavel_id", responsavelId);
   if (prioridade) query = query.eq("prioridade", prioridade);
   if (rotinaClienteIdsPorTipo) query = query.in("rotina_cliente_id", rotinaClienteIdsPorTipo);
+  if (tarefaIdsComSolicitacaoAberta) query = query.in("id", tarefaIdsComSolicitacaoAberta);
 
   query = query.order("data_vencimento", { ascending: true }).order("prioridade", { ascending: false });
   const { data: rows, error, count } = await query.range(offset, offset + limit - 1);
@@ -226,6 +248,21 @@ export async function GET(
     }
   }
 
+  // Story 3.6: marcar tarefas que têm ≥1 solicitação aberta (para badge na lista)
+  const tarefaIds = list.map((r) => r.id);
+  let idsComSolicitacaoAberta = new Set<string>();
+  if (tarefaIds.length > 0) {
+    const { data: solAbertas } = await supabase
+      .from("solicitacoes")
+      .select("tarefa_id")
+      .eq("bpo_id", user.bpoId)
+      .eq("status", "aberta")
+      .in("tarefa_id", tarefaIds);
+    for (const row of (solAbertas ?? []) as { tarefa_id: string }[]) {
+      if (row.tarefa_id) idsComSolicitacaoAberta.add(row.tarefa_id);
+    }
+  }
+
   const tarefas: TarefaListItem[] = list.map((r) => {
     let statusExibir = r.status;
     if (r.status !== "concluida" && r.data_vencimento < hoje) {
@@ -242,6 +279,7 @@ export async function GET(
       responsavelNome: r.responsavel_id ? nomesMap[r.responsavel_id] ?? null : null,
       clienteId: r.cliente_id,
       rotinaClienteId: r.rotina_cliente_id,
+      comSolicitacoesAbertas: idsComSolicitacaoAberta.has(r.id),
     };
   });
 

@@ -111,6 +111,18 @@ function createSupabaseForTarefas(tarefas: unknown[] = TAREFAS_ROWS, total = 1) 
         }),
       };
     }
+    if (table === "solicitacoes") {
+      const solData = { data: [{ tarefa_id: "t1" }], error: null };
+      const chain = {
+        eq: vi.fn().mockReturnThis(),
+        not: vi.fn().mockResolvedValue(solData),
+        in: vi.fn().mockResolvedValue(solData),
+      };
+      chain.eq.mockReturnValue(chain);
+      return {
+        select: vi.fn().mockReturnValue(chain),
+      };
+    }
     return { select };
   });
   return { from };
@@ -198,6 +210,26 @@ describe("GET /api/clientes/[clienteId]/tarefas", () => {
 
     expect(res.status).toBe(200);
     expect(json.data.tarefas).toBeDefined();
+  });
+
+  it("filtra por comSolicitacoesAbertas e retorna comSolicitacoesAbertas nos itens (Story 3.6)", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
+    vi.mocked(buscarClientePorIdEBpo).mockResolvedValue({
+      data: { id: "cliente-1", bpo_id: "bpo-1" },
+      error: null,
+    });
+    const supabase = createSupabaseForTarefas();
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/clientes/cliente-1/tarefas?dataInicio=2026-03-01&dataFim=2026-03-31&comSolicitacoesAbertas=true"),
+      { params: Promise.resolve({ clienteId: "cliente-1" }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.tarefas).toHaveLength(1);
+    expect(json.data.tarefas[0].comSolicitacoesAbertas).toBe(true);
   });
 
   it("retorna vazio quando filtro por tipo não encontra rotinas do cliente", async () => {
