@@ -30,15 +30,26 @@ export function AreaDeTrabalhoClient({ clienteId }: Props) {
   const [dataHoje] = useState(() => getHoje());
   const [tarefas, setTarefas] = useState<TarefaListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const params = new URLSearchParams({ dataInicio: dataHoje, dataFim: dataHoje });
     setLoading(true);
+    setErro(null);
     fetch(`/api/clientes/${clienteId}/tarefas?${params}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status === 401 ? "Não autenticado." : r.status === 403 ? "Acesso negado." : "Falha ao carregar tarefas.");
+        return r.json();
+      })
       .then((json) => {
-        if (!cancelled) setTarefas(json.data?.tarefas ?? []);
+        if (!cancelled) {
+          if (json?.error) setErro(json.error?.message ?? "Erro ao carregar tarefas.");
+          else setTarefas(json.data?.tarefas ?? []);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setErro(e instanceof Error ? e.message : "Erro ao carregar tarefas.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -59,6 +70,14 @@ export function AreaDeTrabalhoClient({ clienteId }: Props) {
     return (
       <p className="text-sm text-muted-foreground" aria-busy="true">
         Carregando área de trabalho…
+      </p>
+    );
+  }
+
+  if (erro) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        {erro}
       </p>
     );
   }

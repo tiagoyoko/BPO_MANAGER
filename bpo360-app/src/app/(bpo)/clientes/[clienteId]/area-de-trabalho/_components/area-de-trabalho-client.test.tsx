@@ -98,4 +98,13 @@ describe("AreaDeTrabalhoClient", () => {
     });
     expect(screen.getByText(/Solicitações e mensagens em breve \(EP3\)/)).toBeTruthy();
   });
+
+  it("exibe mensagem de erro quando o fetch falha", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("Falha de rede"));
+    render(<AreaDeTrabalhoClient clienteId="cliente-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toBe("Falha de rede");
+    });
+  });
 });
