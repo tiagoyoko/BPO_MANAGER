@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { SolicitacaoListItem } from "@/app/api/solicitacoes/route";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -91,7 +92,11 @@ export function SolicitacoesList({
             <tr key={s.id} className="border-b hover:bg-muted/50">
               <td className="py-2 pr-4 font-mono text-xs">{s.id.slice(0, 8)}</td>
               <td className="py-2 pr-4">{s.clienteNome ?? "—"}</td>
-              <td className="py-2 pr-4">{s.titulo}</td>
+              <td className="py-2 pr-4">
+                <Link href={`/solicitacoes/${s.id}`} className="text-primary hover:underline">
+                  {s.titulo}
+                </Link>
+              </td>
               <td className="py-2 pr-4">{TIPO_LABEL[s.tipo] ?? s.tipo}</td>
               <td className="py-2 pr-4">{PRIORIDADE_LABEL[s.prioridade] ?? s.prioridade}</td>
               <td className="py-2 pr-4">{STATUS_LABEL[s.status] ?? s.status}</td>
