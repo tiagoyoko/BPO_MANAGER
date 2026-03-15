@@ -1,5 +1,5 @@
 # generated: 2026-03-13
-# last_updated: 2026-03-15  # story 1-8 context created
+# last_updated: 2026-03-15  # story 1-8 done
 # project: BPO_MANAGER
 # project_key: NOKEY
 # tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   1-5-configurar-erp-principal-f360-por-cliente: done
   1-6-configurar-parametros-basicos-de-integracao-f360-sem-api: done
   1-7-ver-status-de-configuracao-erp-por-cliente: done
-  1-8-painel-das-empresas-resumo-em-numeros: review
+  1-8-painel-das-empresas-resumo-em-numeros: done
   1-9-regras-de-faturamento-por-cliente: backlog
   epic-1-retrospective: optional
 

@@ -90,7 +90,7 @@ describe("BpoHomeDashboardClient", () => {
       expect(screen.getByRole("status")).toBeDefined();
     });
 
-    expect(screen.getAllByText(/não foi possível carregar o resumo/i)).toHaveLength(2);
-    expect(screen.getByText(/db_error/i)).toBeDefined();
+    expect(screen.getByText(/não foi possível carregar o resumo/i)).toBeDefined();
+    expect(screen.getByText(/erro ao acessar os dados/i)).toBeDefined();
   });
 });

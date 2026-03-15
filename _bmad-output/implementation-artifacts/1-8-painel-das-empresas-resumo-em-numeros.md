@@ -1,6 +1,6 @@
 # Story 1.8: Painel das empresas – resumo em números
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -173,6 +173,11 @@ Codex GPT-5
 - bpo360-app/src/app/api/dashboard/resumo/route.ts
 - bpo360-app/src/app/api/dashboard/resumo/route.test.ts
 - bpo360-app/src/lib/domain/dashboard/types.ts
+- bpo360-app/src/app/(bpo)/solicitacoes/[solicitacaoId]/_components/detalhe-solicitacao-client.tsx (lint fix pré-existente)
+- bpo360-app/src/app/(bpo)/tarefas/[tarefaId]/_components/tarefa-detalhe-client.tsx (lint fix pré-existente)
+- bpo360-app/src/app/api/clientes/[clienteId]/tarefas/route.ts (lint fix pré-existente)
+- bpo360-app/src/app/api/clientes/[clienteId]/timeline/route.test.ts (lint fix pré-existente)
+- bpo360-app/src/components/documentos-section.tsx (lint fix pré-existente)
 
 ### Change Log
 

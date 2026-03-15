@@ -11,7 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ResumoDashboard } from "@/lib/domain/dashboard/types";
+import type {
+  ResumoDashboard,
+  ResumoErrorCode,
+} from "@/lib/domain/dashboard/types";
+import { isResumoErrorCode } from "@/lib/domain/dashboard/types";
 import type { CurrentUser } from "@/types/domain";
 
 type Props = {
@@ -21,6 +25,12 @@ type Props = {
 type ApiResponse =
   | { data: ResumoDashboard; error: null }
   | { data: null; error: { code: string; message: string } };
+
+const MENSAGENS_ERRO_RESUMO: Record<ResumoErrorCode, string> = {
+  UNAUTHORIZED: "Sua sessão expirou. Faça login novamente.",
+  FORBIDDEN: "Você não tem permissão para visualizar esse painel.",
+  DB_ERROR: "Erro ao acessar os dados. Tente novamente em alguns instantes.",
+} as const;
 
 const RESUMO_INICIAL: ResumoDashboard = {
   totalClientes: 0,
@@ -37,11 +47,11 @@ const RESUMO_INICIAL: ResumoDashboard = {
   },
 };
 
-function traduzirCodigoErro(code?: string) {
+/** Mensagem amigável a partir do código (nunca expõe detalhes técnicos). */
+function mensagemAmigavelResumo(code?: string): string {
   if (!code) return "Não foi possível carregar o resumo.";
-  if (code === "UNAUTHORIZED") return "Sua sessão expirou. Faça login novamente.";
-  if (code === "FORBIDDEN") return "Você não tem permissão para visualizar esse painel.";
-  return `Não foi possível carregar o resumo (${code}).`;
+  if (isResumoErrorCode(code)) return MENSAGENS_ERRO_RESUMO[code];
+  return "Ocorreu um erro inesperado. Tente novamente.";
 }
 
 export function BpoHomeDashboardClient({ user }: Props) {
@@ -73,7 +83,7 @@ export function BpoHomeDashboardClient({ user }: Props) {
           setFeedback({
             open: true,
             title: "Não foi possível carregar o resumo",
-            message: traduzirCodigoErro(json.error?.code),
+            message: mensagemAmigavelResumo(json.error?.code),
           });
           return;
         }

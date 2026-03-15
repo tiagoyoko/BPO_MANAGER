@@ -71,6 +71,9 @@ export async function GET() {
       contarClientesPorStatus(supabase, user.bpoId, STATUS_CLIENTE.emImplantacao),
       contarClientesPorStatus(supabase, user.bpoId, STATUS_CLIENTE.pausado),
       contarClientesPorStatus(supabase, user.bpoId, STATUS_CLIENTE.encerrado),
+      // Assume no máximo 1 registro ativo e 1 inativo por cliente em integracoes_erp
+      // (modelo de dados: unique constraint em (cliente_id, bpo_id)). Se um cliente
+      // puder ter múltiplos registros, substituir por COUNT DISTINCT via RPC.
       supabase
         .from("integracoes_erp")
         .select("cliente_id", { count: "exact", head: true })
@@ -96,6 +99,7 @@ export async function GET() {
         encerrado: encerrados,
       },
       clientesPorErpStatus: {
+        // Subtração segura dado o invariante de 1 registro por cliente acima.
         naoConfigurado: Math.max(0, totalClientes - integracaoAtiva - configBasicaSalva),
         configBasicaSalva,
         integracaoAtiva,

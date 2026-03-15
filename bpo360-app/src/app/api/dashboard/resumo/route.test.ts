@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth/get-current-user", () => ({
   getCurrentUser: vi.fn(),
@@ -17,10 +16,6 @@ const { createClient } = await import("@/lib/supabase/server") as {
 };
 
 const { GET } = await import("./route");
-
-function reqGet(url = "http://localhost/api/dashboard/resumo"): NextRequest {
-  return new NextRequest(url);
-}
 
 const GESTOR = {
   id: "user-1",
@@ -53,12 +48,30 @@ describe("GET /api/dashboard/resumo", () => {
   it("retorna 401 quando não autenticado", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
 
-    const res = await GET(reqGet());
+    const res = await GET();
     const json = await res.json();
 
     expect(res.status).toBe(401);
     expect(json.data).toBeNull();
     expect(json.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("retorna 403 quando o papel é cliente_final", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: "user-2",
+      bpoId: "bpo-1",
+      role: "cliente_final" as const,
+      email: "cliente@empresa.com",
+      clienteId: "cli-1",
+      nome: "Cliente",
+    });
+
+    const res = await GET();
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.data).toBeNull();
+    expect(json.error.code).toBe("FORBIDDEN");
   });
 
   it("retorna contagens agregadas por status e ERP", async () => {
@@ -91,7 +104,7 @@ describe("GET /api/dashboard/resumo", () => {
       }),
     } as never);
 
-    const res = await GET(reqGet());
+    const res = await GET();
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -138,7 +151,7 @@ describe("GET /api/dashboard/resumo", () => {
       }),
     } as never);
 
-    const res = await GET(reqGet());
+    const res = await GET();
     const json = await res.json();
 
     expect(res.status).toBe(500);
