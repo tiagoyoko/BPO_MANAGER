@@ -179,16 +179,18 @@ export async function POST(request: NextRequest) {
   }
 
   const { clienteId: bodyClienteId, titulo, descricao, tipo, prioridade, tarefaId } = body;
+  const tituloNormalizado = titulo?.trim() ?? "";
+  const descricaoNormalizada = descricao?.trim() ?? "";
   const clienteId = isClienteFinal ? user.clienteId! : (bodyClienteId ?? "").trim() || null;
-  if (!clienteId || !titulo || !tipo || !prioridade) {
+  if (!clienteId || !tituloNormalizado || !descricaoNormalizada || !tipo || !prioridade) {
     return NextResponse.json(
       {
         data: null,
         error: {
           code: "CAMPOS_OBRIGATORIOS",
           message: isClienteFinal
-            ? "titulo, tipo e prioridade são obrigatórios."
-            : "clienteId, titulo, tipo e prioridade são obrigatórios.",
+            ? "titulo, descricao, tipo e prioridade são obrigatórios."
+            : "clienteId, titulo, descricao, tipo e prioridade são obrigatórios.",
         },
       },
       { status: 400 }
@@ -295,8 +297,8 @@ export async function POST(request: NextRequest) {
     .insert({
       bpo_id: bpoIdForInsert,
       cliente_id: clienteId,
-      titulo: titulo.trim(),
-      descricao: descricao?.trim() ?? null,
+      titulo: tituloNormalizado,
+      descricao: descricaoNormalizada,
       tipo,
       prioridade,
       tarefa_id: isClienteFinal ? null : (tarefaId ?? null),

@@ -187,6 +187,7 @@ describe("POST /api/solicitacoes", () => {
         body: JSON.stringify({
           clienteId: "cliente-1",
           titulo: "T",
+          descricao: "Descrição válida",
           tipo: "outro",
           prioridade: "media",
         }),
@@ -213,7 +214,12 @@ describe("POST /api/solicitacoes", () => {
     const res = await POST(
       new NextRequest("http://localhost/api/solicitacoes", {
         method: "POST",
-        body: JSON.stringify({ titulo: "Pedido portal", tipo: "outro", prioridade: "media" }),
+        body: JSON.stringify({
+          titulo: "Pedido portal",
+          descricao: "Descrição do pedido",
+          tipo: "outro",
+          prioridade: "media",
+        }),
       })
     );
     const json = await res.json();
@@ -244,6 +250,25 @@ describe("POST /api/solicitacoes", () => {
     expect(json.error.code).toBe("CAMPOS_OBRIGATORIOS");
   });
 
+  it("retorna 400 quando descricao está vazia ou só com espaços", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(CLIENTE_FINAL_MOCK);
+    const res = await POST(
+      new NextRequest("http://localhost/api/solicitacoes", {
+        method: "POST",
+        body: JSON.stringify({
+          titulo: "Pedido portal",
+          descricao: "   ",
+          tipo: "outro",
+          prioridade: "media",
+        }),
+      })
+    );
+    const json = await res.json();
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe("CAMPOS_OBRIGATORIOS");
+    expect(json.error.message).toContain("descricao");
+  });
+
   it("retorna 400 quando tipo é inválido", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
     const maybeSingleCliente = vi.fn().mockResolvedValue({ data: { id: "cliente-1" }, error: null });
@@ -257,6 +282,7 @@ describe("POST /api/solicitacoes", () => {
         body: JSON.stringify({
           clienteId: "cliente-1",
           titulo: "T",
+          descricao: "Descrição válida",
           tipo: "invalido",
           prioridade: "media",
         }),
@@ -284,6 +310,7 @@ describe("POST /api/solicitacoes", () => {
         body: JSON.stringify({
           clienteId: "cliente-outro",
           titulo: "T",
+          descricao: "Descrição válida",
           tipo: "outro",
           prioridade: "media",
         }),

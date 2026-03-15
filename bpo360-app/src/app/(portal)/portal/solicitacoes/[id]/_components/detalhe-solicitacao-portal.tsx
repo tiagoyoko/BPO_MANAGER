@@ -70,15 +70,21 @@ type Props = {
 
 export function DetalheSolicitacaoPortal({ solicitacao, anexos }: Props) {
   const [loadingUrl, setLoadingUrl] = useState<string | null>(null);
+  const [erroAnexo, setErroAnexo] = useState<string | null>(null);
 
   const getSignedUrl = useCallback(async (solicitacaoId: string, anexoId: string) => {
     setLoadingUrl(anexoId);
+    setErroAnexo(null);
     try {
       const res = await fetch(`/api/solicitacoes/${solicitacaoId}/anexos/${anexoId}/url`);
       const json = await res.json();
       if (res.ok && json.data?.url) {
         window.open(json.data.url, "_blank", "noopener,noreferrer");
+        return;
       }
+      setErroAnexo(json.error?.message ?? "Não foi possível abrir o anexo.");
+    } catch {
+      setErroAnexo("Não foi possível abrir o anexo.");
     } finally {
       setLoadingUrl(null);
     }
@@ -114,6 +120,11 @@ export function DetalheSolicitacaoPortal({ solicitacao, anexos }: Props) {
 
       <section aria-label="Anexos">
         <h2 className="text-base font-medium mb-2">Anexos</h2>
+        {erroAnexo ? (
+          <p className="mb-2 text-sm text-destructive" role="alert">
+            {erroAnexo}
+          </p>
+        ) : null}
         {anexos.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum anexo.</p>
         ) : (

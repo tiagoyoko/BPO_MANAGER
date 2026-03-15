@@ -79,4 +79,21 @@ describe("SolicitacoesPortalClient", () => {
     const detalhe = screen.getByRole("link", { name: /enviar extrato bancário/i });
     expect(detalhe.getAttribute("href")).toBe("/portal/solicitacoes/sol-1");
   });
+
+  it("exibe erro de carregamento sem mascarar como lista vazia", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        error: {
+          message: "Falha ao carregar solicitações.",
+        },
+      }),
+    } as Response);
+
+    render(<SolicitacoesPortalClient />);
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Falha ao carregar solicitações.");
+    expect(screen.queryByText("Nenhuma solicitação encontrada.")).toBeNull();
+    expect(screen.getByRole("button", { name: /tentar novamente/i })).toBeDefined();
+  });
 });

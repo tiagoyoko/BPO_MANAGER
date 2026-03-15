@@ -27,20 +27,30 @@ export function SolicitacoesPortalClient() {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   const fetchSolicitacoes = useCallback(async () => {
     setIsLoading(true);
-    const res = await fetch("/api/solicitacoes?limit=50");
-    const json = await res.json();
-    if (!res.ok) {
+    setErro(null);
+    try {
+      const res = await fetch("/api/solicitacoes?limit=50");
+      const json = await res.json();
+      if (!res.ok) {
+        setSolicitacoes([]);
+        setTotal(0);
+        setErro(json.error?.message ?? "Erro ao carregar solicitações.");
+        setIsLoading(false);
+        return;
+      }
+      setSolicitacoes(json.data?.solicitacoes ?? []);
+      setTotal(json.data?.total ?? 0);
+      setIsLoading(false);
+    } catch {
       setSolicitacoes([]);
       setTotal(0);
+      setErro("Erro ao carregar solicitações.");
       setIsLoading(false);
-      return;
     }
-    setSolicitacoes(json.data?.solicitacoes ?? []);
-    setTotal(json.data?.total ?? 0);
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -69,11 +79,26 @@ export function SolicitacoesPortalClient() {
         </Link>
       </div>
 
-      {solicitacoes.length === 0 ? (
+      {erro ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
+          <p className="text-destructive">{erro}</p>
+          <button
+            type="button"
+            onClick={fetchSolicitacoes}
+            className="mt-2 text-primary hover:underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
+
+      {!erro && solicitacoes.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
           Nenhuma solicitação encontrada.
         </p>
-      ) : (
+      ) : null}
+
+      {!erro && solicitacoes.length > 0 ? (
         <ul className="divide-y divide-border rounded-md border border-border">
           {solicitacoes.map((s) => (
             <li key={s.id} className="px-4 py-3 hover:bg-muted/50">
@@ -94,7 +119,7 @@ export function SolicitacoesPortalClient() {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }
