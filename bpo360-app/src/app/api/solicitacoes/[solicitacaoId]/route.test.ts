@@ -22,7 +22,7 @@ const USUARIO_MOCK = {
   nome: "Operador",
 };
 
-const CLIENTE_FINAL_MOCK = { ...USUARIO_MOCK, role: "cliente_final" as const };
+const CLIENTE_FINAL_MOCK = { ...USUARIO_MOCK, role: "cliente_final" as const, clienteId: "cliente-1" };
 
 const SOLICITACAO_ROW = {
   id: "sol-1",
@@ -56,13 +56,26 @@ describe("GET /api/solicitacoes/[solicitacaoId]", () => {
     expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("retorna 403 quando papel é cliente_final", async () => {
+  it("cliente_final GET detalhe retorna 200 quando solicitação é do próprio cliente", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(CLIENTE_FINAL_MOCK);
+    const maybeSingle = vi.fn().mockResolvedValue({ data: SOLICITACAO_ROW, error: null });
+    const eqId = vi.fn().mockReturnValue({ maybeSingle });
+    const fromMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ eq: eqId }),
+    });
+    vi.mocked(createClient).mockResolvedValue({ from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>);
+
     const res = await GET(
       new NextRequest("http://localhost/api/solicitacoes/sol-1"),
       { params: Promise.resolve({ solicitacaoId: "sol-1" }) }
     );
-    expect(res.status).toBe(403);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.error).toBeNull();
+    expect(json.data).toMatchObject({ id: "sol-1", clienteId: "cliente-1", titulo: "Doc faltando" });
+    expect(eqId).toHaveBeenCalledWith("id", "sol-1");
+    expect(eqId).not.toHaveBeenCalledWith("bpo_id", expect.anything());
   });
 
   it("retorna 404 quando solicitação não existe ou é de outro BPO", async () => {

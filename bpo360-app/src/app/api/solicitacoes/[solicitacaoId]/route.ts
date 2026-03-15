@@ -1,6 +1,6 @@
 /**
- * Story 3.1: GET /api/solicitacoes/[solicitacaoId] — detalhe da solicitação.
- * Guard: apenas solicitações do bpo do usuário (RLS + canAccessModelos).
+ * Story 3.1 + 3.2: GET /api/solicitacoes/[solicitacaoId] — detalhe da solicitação.
+ * BPO: canAccessModelos + bpo_id; cliente_final: RLS restringe ao próprio cliente.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +34,8 @@ export async function GET(
       { status: 401 }
     );
   }
-  if (!canAccessModelos(user)) {
+  const isClienteFinal = user.role === "cliente_final";
+  if (!isClienteFinal && !canAccessModelos(user)) {
     return NextResponse.json(
       { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
       { status: 403 }
@@ -50,12 +51,12 @@ export async function GET(
   }
 
   const supabase = await createClient();
-  const { data: row, error } = await supabase
+  let query = supabase
     .from("solicitacoes")
     .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, clientes(nome_fantasia)")
-    .eq("id", solicitacaoId)
-    .eq("bpo_id", user.bpoId)
-    .maybeSingle();
+    .eq("id", solicitacaoId);
+  if (!isClienteFinal) query = query.eq("bpo_id", user.bpoId);
+  const { data: row, error } = await query.maybeSingle();
 
   if (error) {
     return NextResponse.json(

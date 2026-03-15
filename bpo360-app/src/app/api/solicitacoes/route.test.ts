@@ -57,8 +57,29 @@ describe("GET /api/solicitacoes", () => {
     expect(json.data).toBeNull();
   });
 
-  it("retorna 403 quando papel é cliente_final", async () => {
+  it("cliente_final GET retorna 200 e lista filtrada por cliente_id do usuário", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(CLIENTE_FINAL_MOCK);
+    const rangeFn = vi.fn().mockResolvedValue({ data: [SOLICITACAO_ROW], error: null, count: 1 });
+    const orderFn = vi.fn().mockReturnValue({ range: rangeFn });
+    const eqFn = vi.fn().mockReturnValue({ order: orderFn });
+    const supabaseMock = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: eqFn }),
+      }),
+    };
+    vi.mocked(createClient).mockResolvedValue(supabaseMock as unknown as Awaited<ReturnType<typeof createClient>>);
+
+    const res = await GET(reqGet());
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.error).toBeNull();
+    expect(eqFn).toHaveBeenCalledWith("cliente_id", "cliente-1");
+    expect(json.data.solicitacoes).toHaveLength(1);
+  });
+
+  it("cliente_final sem clienteId retorna 403", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ ...CLIENTE_FINAL_MOCK, clienteId: null });
     const res = await GET(reqGet());
     const json = await res.json();
     expect(res.status).toBe(403);
@@ -176,20 +197,38 @@ describe("POST /api/solicitacoes", () => {
     expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("retorna 403 quando papel é cliente_final", async () => {
+  it("cliente_final POST sem clienteId usa user.clienteId e origem cliente (201)", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(CLIENTE_FINAL_MOCK);
+    const singleInsert = vi.fn().mockResolvedValue({ data: { ...SOLICITACAO_ROW, id: "sol-new" }, error: null });
+    const selectInsert = vi.fn().mockReturnValue({ single: singleInsert });
+    const insertFn = vi.fn().mockReturnValue({ select: selectInsert });
+    const maybeSingleCli = vi.fn().mockResolvedValue({ data: { bpo_id: "bpo-1" }, error: null });
+    const eqCli = vi.fn().mockReturnValue({ single: maybeSingleCli });
+    const fromMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ eq: eqCli }),
+      insert: insertFn,
+    });
+    vi.mocked(createClient).mockResolvedValue({ from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>);
+
     const res = await POST(
       new NextRequest("http://localhost/api/solicitacoes", {
         method: "POST",
-        body: JSON.stringify({
-          clienteId: "cliente-1",
-          titulo: "T",
-          tipo: "outro",
-          prioridade: "media",
-        }),
+        body: JSON.stringify({ titulo: "Pedido portal", tipo: "outro", prioridade: "media" }),
       })
     );
-    expect(res.status).toBe(403);
+    const json = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(json.error).toBeNull();
+    expect(insertFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cliente_id: "cliente-1",
+        titulo: "Pedido portal",
+        origem: "cliente",
+        status: "aberta",
+        criado_por_id: "user-1",
+      })
+    );
   });
 
   it("retorna 400 quando faltam campos obrigatórios", async () => {
@@ -302,6 +341,7 @@ describe("POST /api/solicitacoes", () => {
         titulo: "Doc faltando",
         status: "aberta",
         criado_por_id: "user-1",
+        origem: "interno",
       })
     );
   });

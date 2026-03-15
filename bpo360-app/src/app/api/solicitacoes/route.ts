@@ -1,6 +1,6 @@
 /**
- * Story 3.1: GET /api/solicitacoes (lista com filtros) | POST (criar solicitação).
- * Guard: bpo_id via RLS; apenas admin_bpo, gestor_bpo, operador_bpo.
+ * Story 3.1 + 3.2: GET /api/solicitacoes (lista com filtros) | POST (criar solicitação).
+ * BPO: canAccessModelos; cliente_final: só próprio cliente (GET filtrado, POST ignora body.clienteId e usa get_my_cliente_id; origem 'cliente').
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -70,21 +70,29 @@ export async function GET(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (!canAccessModelos(user)) {
+  const isClienteFinal = user.role === "cliente_final";
+  if (!isClienteFinal && !canAccessModelos(user)) {
     return NextResponse.json(
       { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
       { status: 403 }
     );
   }
+  if (isClienteFinal && !user.clienteId) {
+    return NextResponse.json(
+      { data: null, error: { code: "FORBIDDEN", message: "Cliente não identificado." } },
+      { status: 403 }
+    );
+  }
 
   const { searchParams } = new URL(request.url);
-  const clienteId = (searchParams.get("clienteId") ?? "").trim() || null;
-  const statusParam = (searchParams.get("status") ?? "").trim();
-  const status =
-    statusParam && STATUS_VALIDOS.includes(statusParam as StatusSolicitacao) ? statusParam : null;
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   const offset = (page - 1) * limit;
+  const statusParam = (searchParams.get("status") ?? "").trim();
+  const status =
+    statusParam && STATUS_VALIDOS.includes(statusParam as StatusSolicitacao) ? statusParam : null;
+  const clienteIdParam = (searchParams.get("clienteId") ?? "").trim() || null;
+  const clienteId = isClienteFinal ? user.clienteId! : clienteIdParam;
 
   const supabase = await createClient();
 
@@ -93,10 +101,14 @@ export async function GET(request: NextRequest) {
     .select(
       "id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, clientes(nome_fantasia)",
       { count: "exact" }
-    )
-    .eq("bpo_id", user.bpoId);
+    );
 
-  if (clienteId) query = query.eq("cliente_id", clienteId);
+  if (isClienteFinal) {
+    query = query.eq("cliente_id", user.clienteId!);
+  } else {
+    query = query.eq("bpo_id", user.bpoId);
+    if (clienteId) query = query.eq("cliente_id", clienteId);
+  }
   if (status) query = query.eq("status", status);
 
   const { data: rows, error, count } = await query
@@ -142,9 +154,16 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (!canAccessModelos(user)) {
+  const isClienteFinal = user.role === "cliente_final";
+  if (!isClienteFinal && !canAccessModelos(user)) {
     return NextResponse.json(
       { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
+      { status: 403 }
+    );
+  }
+  if (isClienteFinal && !user.clienteId) {
+    return NextResponse.json(
+      { data: null, error: { code: "FORBIDDEN", message: "Cliente não identificado." } },
       { status: 403 }
     );
   }
@@ -159,14 +178,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { clienteId, titulo, descricao, tipo, prioridade, tarefaId } = body;
+  const { clienteId: bodyClienteId, titulo, descricao, tipo, prioridade, tarefaId } = body;
+  const clienteId = isClienteFinal ? user.clienteId! : (bodyClienteId ?? "").trim() || null;
   if (!clienteId || !titulo || !tipo || !prioridade) {
     return NextResponse.json(
       {
         data: null,
         error: {
           code: "CAMPOS_OBRIGATORIOS",
-          message: "clienteId, titulo, tipo e prioridade são obrigatórios.",
+          message: isClienteFinal
+            ? "titulo, tipo e prioridade são obrigatórios."
+            : "clienteId, titulo, tipo e prioridade são obrigatórios.",
         },
       },
       { status: 400 }
@@ -199,7 +221,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
 
-  if (tarefaId) {
+  if (tarefaId && !isClienteFinal) {
     const { data: tarefa, error: errTarefa } = await supabase
       .from("tarefas")
       .select("id, cliente_id")
@@ -226,43 +248,61 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { data: cliente, error: errCliente } = await supabase
-    .from("clientes")
-    .select("id")
-    .eq("id", clienteId)
-    .eq("bpo_id", user.bpoId)
-    .maybeSingle();
-  if (errCliente) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errCliente.message } },
-      { status: 500 }
-    );
-  }
-  if (!cliente) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "CLIENTE_INVALIDO",
-          message: "clienteId deve pertencer ao seu BPO.",
+  if (!isClienteFinal) {
+    const { data: cliente, error: errCliente } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("id", clienteId)
+      .eq("bpo_id", user.bpoId)
+      .maybeSingle();
+    if (errCliente) {
+      return NextResponse.json(
+        { data: null, error: { code: "DB_ERROR", message: errCliente.message } },
+        { status: 500 }
+      );
+    }
+    if (!cliente) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: {
+            code: "CLIENTE_INVALIDO",
+            message: "clienteId deve pertencer ao seu BPO.",
+          },
         },
-      },
-      { status: 400 }
+        { status: 400 }
+      );
+    }
+  }
+
+  const origem = isClienteFinal ? "cliente" : "interno";
+  let bpoIdForInsert: string;
+  if (isClienteFinal) {
+    const { data: cli } = await supabase.from("clientes").select("bpo_id").eq("id", clienteId).single();
+    bpoIdForInsert = (cli as { bpo_id: string } | null)?.bpo_id ?? "";
+  } else {
+    bpoIdForInsert = user.bpoId ?? "";
+  }
+  if (!bpoIdForInsert) {
+    return NextResponse.json(
+      { data: null, error: { code: "DB_ERROR", message: "BPO do cliente não encontrado." } },
+      { status: 500 }
     );
   }
 
   const { data: inserida, error: insertError } = await supabase
     .from("solicitacoes")
     .insert({
-      bpo_id: user.bpoId,
+      bpo_id: bpoIdForInsert,
       cliente_id: clienteId,
       titulo: titulo.trim(),
       descricao: descricao?.trim() ?? null,
       tipo,
       prioridade,
-      tarefa_id: tarefaId ?? null,
+      tarefa_id: isClienteFinal ? null : (tarefaId ?? null),
       status: "aberta",
       criado_por_id: user.id,
+      origem,
     })
     .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id")
     .single();
