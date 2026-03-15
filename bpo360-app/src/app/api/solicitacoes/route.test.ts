@@ -36,6 +36,7 @@ const SOLICITACAO_ROW = {
   created_at: "2026-03-14T10:00:00Z",
   updated_at: "2026-03-14T10:00:00Z",
   criado_por_id: "user-1",
+  origem: "interno",
 };
 
 function reqGet(url = "http://localhost/api/solicitacoes"): NextRequest {
@@ -148,6 +149,7 @@ describe("GET /api/solicitacoes", () => {
       status: "aberta",
       createdAt: "2026-03-14T10:00:00Z",
       criadoPorId: "user-1",
+      origem: "interno",
     });
   });
 });
@@ -201,6 +203,26 @@ describe("POST /api/solicitacoes", () => {
       })
     );
     const json = await res.json();
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe("CAMPOS_OBRIGATORIOS");
+  });
+
+  it("retorna 400 quando titulo contém apenas espaços", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/solicitacoes", {
+        method: "POST",
+        body: JSON.stringify({
+          clienteId: "cliente-1",
+          titulo: "   ",
+          tipo: "outro",
+          prioridade: "media",
+        }),
+      })
+    );
+    const json = await res.json();
+
     expect(res.status).toBe(400);
     expect(json.error.code).toBe("CAMPOS_OBRIGATORIOS");
   });
@@ -294,6 +316,7 @@ describe("POST /api/solicitacoes", () => {
       prioridade: "alta",
       status: "aberta",
       criadoPorId: "user-1",
+      origem: "interno",
     });
     expect(insertFn).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -302,6 +325,7 @@ describe("POST /api/solicitacoes", () => {
         titulo: "Doc faltando",
         status: "aberta",
         criado_por_id: "user-1",
+        origem: "interno",
       })
     );
   });

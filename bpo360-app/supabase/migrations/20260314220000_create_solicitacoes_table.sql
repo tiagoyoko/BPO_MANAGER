@@ -11,6 +11,7 @@ CREATE TABLE public.solicitacoes (
   prioridade      TEXT        NOT NULL DEFAULT 'media',
   tarefa_id       UUID        REFERENCES public.tarefas(id) ON DELETE SET NULL,
   status          TEXT        NOT NULL DEFAULT 'aberta',
+  origem          TEXT        NOT NULL DEFAULT 'interno',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   criado_por_id   UUID        REFERENCES public.usuarios(id) ON DELETE SET NULL,
@@ -22,6 +23,9 @@ CREATE TABLE public.solicitacoes (
   ),
   CONSTRAINT solicitacoes_status_valido CHECK (
     status IN ('aberta', 'em_andamento', 'resolvida', 'fechada')
+  ),
+  CONSTRAINT solicitacoes_origem_valida CHECK (
+    origem IN ('interno', 'cliente')
   )
 );
 
@@ -41,8 +45,15 @@ CREATE POLICY "solicitacoes_select_same_bpo"
   ON public.solicitacoes FOR SELECT
   TO authenticated
   USING (
-    bpo_id = public.get_my_bpo_id()
-    AND public.get_my_role() IN ('admin_bpo', 'gestor_bpo', 'operador_bpo')
+    (
+      bpo_id = public.get_my_bpo_id()
+      AND public.get_my_role() IN ('admin_bpo', 'gestor_bpo', 'operador_bpo')
+    )
+    OR (
+      public.get_my_role() = 'cliente_final'
+      AND origem = 'cliente'
+      AND cliente_id = public.get_my_cliente_id()
+    )
   );
 
 -- INSERT: usuários BPO do mesmo tenant

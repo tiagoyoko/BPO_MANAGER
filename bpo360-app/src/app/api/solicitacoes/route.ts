@@ -10,10 +10,12 @@ import { canAccessModelos } from "@/lib/auth/rbac";
 const TIPOS_VALIDOS = ["documento_faltando", "duvida", "ajuste", "outro"] as const;
 const PRIORIDADES_VALIDAS = ["baixa", "media", "alta", "urgente"] as const;
 const STATUS_VALIDOS = ["aberta", "em_andamento", "resolvida", "fechada"] as const;
+const ORIGENS_VALIDAS = ["interno", "cliente"] as const;
 
 export type TipoSolicitacao = (typeof TIPOS_VALIDOS)[number];
 export type PrioridadeSolicitacao = (typeof PRIORIDADES_VALIDAS)[number];
 export type StatusSolicitacao = (typeof STATUS_VALIDOS)[number];
+export type OrigemSolicitacao = (typeof ORIGENS_VALIDAS)[number];
 
 export type SolicitacaoListItem = {
   id: string;
@@ -28,6 +30,7 @@ export type SolicitacaoListItem = {
   createdAt: string;
   updatedAt: string;
   criadoPorId: string | null;
+  origem: OrigemSolicitacao;
 };
 
 export type SolicitacaoDetalhe = SolicitacaoListItem;
@@ -45,6 +48,7 @@ type SolicitacaoRow = {
   created_at: string;
   updated_at: string;
   criado_por_id: string | null;
+  origem: string;
 };
 
 type SolicitacaoRowComCliente = SolicitacaoRow & {
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("solicitacoes")
     .select(
-      "id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, clientes(nome_fantasia)",
+      "id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, origem, clientes(nome_fantasia)",
       { count: "exact" }
     )
     .eq("bpo_id", user.bpoId);
@@ -124,6 +128,7 @@ export async function GET(request: NextRequest) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     criadoPorId: r.criado_por_id,
+    origem: r.origem as OrigemSolicitacao,
   }));
 
   return NextResponse.json({
@@ -160,7 +165,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { clienteId, titulo, descricao, tipo, prioridade, tarefaId } = body;
-  if (!clienteId || !titulo || !tipo || !prioridade) {
+  const tituloNormalizado = titulo?.trim() ?? "";
+  if (!clienteId || !tituloNormalizado || !tipo || !prioridade) {
     return NextResponse.json(
       {
         data: null,
@@ -256,15 +262,16 @@ export async function POST(request: NextRequest) {
     .insert({
       bpo_id: user.bpoId,
       cliente_id: clienteId,
-      titulo: titulo.trim(),
+      titulo: tituloNormalizado,
       descricao: descricao?.trim() ?? null,
       tipo,
       prioridade,
       tarefa_id: tarefaId ?? null,
       status: "aberta",
       criado_por_id: user.id,
+      origem: "interno",
     })
-    .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id")
+    .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, origem")
     .single();
 
   if (insertError) {
@@ -289,6 +296,7 @@ export async function POST(request: NextRequest) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         criadoPorId: row.criado_por_id,
+        origem: row.origem as OrigemSolicitacao,
       },
       error: null,
     },

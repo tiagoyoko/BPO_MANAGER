@@ -36,6 +36,7 @@ const SOLICITACAO_ROW = {
   created_at: "2026-03-14T10:00:00Z",
   updated_at: "2026-03-14T10:00:00Z",
   criado_por_id: "user-1",
+  origem: "interno",
   clientes: { nome_fantasia: "Cliente A" },
 };
 
@@ -112,6 +113,7 @@ describe("GET /api/solicitacoes/[solicitacaoId]", () => {
       status: "aberta",
       createdAt: "2026-03-14T10:00:00Z",
       criadoPorId: "user-1",
+      origem: "interno",
     });
   });
 });

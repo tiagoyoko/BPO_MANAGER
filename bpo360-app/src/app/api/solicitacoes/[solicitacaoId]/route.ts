@@ -20,6 +20,7 @@ type SolicitacaoRowComCliente = {
   created_at: string;
   updated_at: string;
   criado_por_id: string | null;
+  origem: string;
   clientes?: { nome_fantasia: string } | null;
 };
 
@@ -52,7 +53,7 @@ export async function GET(
   const supabase = await createClient();
   const { data: row, error } = await supabase
     .from("solicitacoes")
-    .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, clientes(nome_fantasia)")
+    .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, origem, clientes(nome_fantasia)")
     .eq("id", solicitacaoId)
     .eq("bpo_id", user.bpoId)
     .maybeSingle();
@@ -84,6 +85,7 @@ export async function GET(
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     criadoPorId: r.criado_por_id,
+    origem: r.origem as SolicitacaoDetalhe["origem"],
   };
 
   return NextResponse.json({ data: detalhe, error: null });
