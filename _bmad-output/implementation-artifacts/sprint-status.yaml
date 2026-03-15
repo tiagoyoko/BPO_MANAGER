@@ -1,5 +1,5 @@
 # generated: 2026-03-13
-# last_updated: 2026-03-14  # code review 3-6 → done
+# last_updated: 2026-03-14  # 3-5 done (code review)
 # project: BPO_MANAGER
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 3-5 done
+last_updated: "2026-03-14"  # 3-5 done (code review)
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -52,65 +52,68 @@ development_status:
   1-7-ver-status-de-configuracao-erp-por-cliente: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-criar-modelo-de-rotina-padrao: done
   2-2-aplicar-modelo-de-rotina-a-um-cliente: done
   2-3-visualizar-e-gerenciar-tarefas-em-calendario-lista: done
   2-4-executar-checklist-de-uma-tarefa: done
   2-5-atribuicao-em-massa-de-tarefas: done
   2-6-editar-configuracao-de-rotinas-em-massa: done
-  epic-2-retrospective: optional
+  2-7-vista-area-de-trabalho-cliente-tres-colunas: done
+  epic-2-retrospective: done
 
-  epic-3: backlog
-  3-1-abrir-solicitacao-para-um-cliente: backlog
+  epic-3: in-progress
+  3-1-abrir-solicitacao-para-um-cliente: done
   3-2-cliente-enviar-solicitacao-e-documentos-pelo-portal: done
-  3-3-centralizar-comunicacao-por-cliente-timeline: backlog
-  3-4-anexar-documentos-a-tarefas-e-solicitacoes: backlog
+  3-3-centralizar-comunicacao-por-cliente-timeline: review
+  3-4-anexar-documentos-a-tarefas-e-solicitacoes: done
   3-5-notificacao-de-atualizacao-para-o-cliente: done
   3-6-vincular-comunicacao-as-rotinas-e-indicadores: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-configurar-token-f360-e-testar-conexao: backlog
-  4-2-mapear-empresas-f360-para-cliente-bpo: backlog
-  4-3-selecionar-contas-bancarias-relevantes: backlog
-  4-4-sincronizar-dados-f360-por-job-agendado: backlog
-  4-5-rodar-sincronizacao-f360-para-um-cliente-via-api: backlog
-  4-6-ver-status-e-historico-de-sincronizacoes-f360: backlog
-  4-7-desativar-temporariamente-a-integracao-f360: backlog
+  epic-4: in-progress
+  4-1-configurar-token-f360-e-testar-conexao: ready-for-dev
+  4-2-mapear-empresas-f360-para-cliente-bpo: ready-for-dev
+  4-3-selecionar-contas-bancarias-relevantes: ready-for-dev
+  4-4-sincronizar-dados-f360-por-job-agendado: ready-for-dev
+  4-5-rodar-sincronizacao-f360-para-um-cliente-via-api: ready-for-dev
+  4-6-ver-status-e-historico-de-sincronizacoes-f360: ready-for-dev
+  4-7-desativar-temporariamente-a-integracao-f360: ready-for-dev
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-ver-indicadores-financeiros-por-cliente: backlog
-  5-2-drill-down-de-contas-a-pagar-receber: backlog
-  5-3-drill-down-de-conciliacoes-pendentes: backlog
-  5-4-atualizar-indicadores-manualmente: backlog
-  5-5-ver-timestamp-e-status-da-ultima-sincronizacao: backlog
-  5-6-visao-resumida-de-carteira-multiplos-clientes: backlog
+  epic-5: in-progress
+  5-1-ver-indicadores-financeiros-por-cliente: ready-for-dev
+  5-2-drill-down-de-contas-a-pagar-receber: ready-for-dev
+  5-3-drill-down-de-conciliacoes-pendentes: ready-for-dev
+  5-4-atualizar-indicadores-manualmente: ready-for-dev
+  5-5-ver-timestamp-e-status-da-ultima-sincronizacao: ready-for-dev
+  5-6-visao-resumida-de-carteira-multiplos-clientes: ready-for-dev
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-registrar-tempo-em-uma-tarefa: backlog
-  6-2-ver-e-editar-lancamentos-de-timesheet: backlog
-  6-3-classificar-tempo-por-tipo-de-atividade: backlog
-  6-4-configurar-custo-hora-por-operador: backlog
-  6-5-calcular-custo-operacional-por-cliente-e-por-rotina: backlog
-  6-6-ver-rentabilidade-por-cliente: backlog
-  6-7-ver-rentabilidade-agregada-por-carteira-e-por-responsavel: backlog
+  epic-6: in-progress
+  6-1-registrar-tempo-em-uma-tarefa: ready-for-dev
+  6-2-ver-e-editar-lancamentos-de-timesheet: ready-for-dev
+  6-3-classificar-tempo-por-tipo-de-atividade: ready-for-dev
+  6-4-configurar-custo-hora-por-operador: ready-for-dev
+  6-5-calcular-custo-operacional-por-cliente-e-por-rotina: ready-for-dev
+  6-6-ver-rentabilidade-por-cliente: ready-for-dev
+  6-7-ver-rentabilidade-agregada-por-carteira-e-por-responsavel: ready-for-dev
+  6-8-cronometro-tempo-no-cliente-ao-abrir-detalhe: ready-for-dev
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-entrar-em-modo-foco-em-um-cliente: backlog
-  7-2-ver-somente-tarefas-do-cliente-em-foco: backlog
-  7-3-registrar-blocos-de-tempo-focado-por-cliente: backlog
-  7-4-limitar-numero-de-clientes-ativos-por-dia-turno: backlog
-  7-5-alertar-sobre-alternancia-excessiva-entre-clientes: backlog
-  7-6-sair-explicitamente-do-modo-foco: backlog
+  epic-7: in-progress
+  7-1-entrar-em-modo-foco-em-um-cliente: ready-for-dev
+  7-2-ver-somente-tarefas-do-cliente-em-foco: ready-for-dev
+  7-3-registrar-blocos-de-tempo-focado-por-cliente: ready-for-dev
+  7-4-limitar-numero-de-clientes-ativos-por-dia-turno: ready-for-dev
+  7-5-alertar-sobre-alternancia-excessiva-entre-clientes: ready-for-dev
+  7-6-sair-explicitamente-do-modo-foco: ready-for-dev
   epic-7-retrospective: optional
 
   epic-8: in-progress
   8-1-autenticacao-e-papeis-supabase-auth-rls: done
   8-2-cadastrar-usuarios-internos-admin-gestor-operador: done
   8-3-cadastrar-usuarios-de-clientes-acesso-por-cnpj: done
-  8-4-cofre-de-senhas-segredos-criptografados-e-auditoria: ready-for-dev
+  8-4a-cofre-backend-segredos-criptografados-e-auditoria: ready-for-dev
+  8-4b-cofre-ui-listagem-criar-editar-revelar: backlog
   epic-8-retrospective: optional
