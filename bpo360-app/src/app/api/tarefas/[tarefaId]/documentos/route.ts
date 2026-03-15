@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
+import type { DocumentoItem } from "@/types/documentos";
+
+export type { DocumentoItem };
 
 const BUCKET = "anexos-solicitacoes";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -18,16 +21,6 @@ const MIME_ALLOWED = new Set([
   "application/vnd.ms-excel",
   "text/csv",
 ]);
-
-export type DocumentoItem = {
-  id: string;
-  nomeArquivo: string;
-  tipoMime: string;
-  tamanho: number;
-  createdAt: string;
-  autor: string | null;
-  storageKey: string;
-};
 
 export async function GET(
   _request: NextRequest,
@@ -72,7 +65,7 @@ export async function GET(
 
   const { data: rows, error } = await supabase
     .from("documentos")
-    .select("id, nome_arquivo, tipo_mime, tamanho, created_at, storage_key, criado_por_id")
+    .select("id, nome_arquivo, tipo_mime, tamanho, created_at, criado_por_id")
     .eq("tarefa_id", tarefaId)
     .order("created_at", { ascending: true });
 
@@ -108,7 +101,6 @@ export async function GET(
     tamanho: Number(r.tamanho),
     createdAt: r.created_at as string,
     autor: autorPorId.get(r.criado_por_id as string) ?? null,
-    storageKey: r.storage_key as string,
   }));
 
   return NextResponse.json({ data: list, error: null });
@@ -235,7 +227,7 @@ export async function POST(
       tamanho: file.size,
       criado_por_id: user.id,
     })
-    .select("id, nome_arquivo, tipo_mime, tamanho, created_at, storage_key, criado_por_id")
+    .select("id, nome_arquivo, tipo_mime, tamanho, created_at, criado_por_id")
     .single();
 
   if (insertError) {
@@ -254,7 +246,6 @@ export async function POST(
     tamanho: Number(r.tamanho),
     createdAt: r.created_at as string,
     autor: user.nome ?? null,
-    storageKey: r.storage_key as string,
   };
 
   return NextResponse.json({ data: item, error: null }, { status: 201 });

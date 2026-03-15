@@ -14,7 +14,7 @@ const { createClient } = await import("@/lib/supabase/server") as {
   createClient: ReturnType<typeof vi.fn>;
 };
 
-const { GET } = await import("./route");
+const { GET, POST } = await import("./route");
 
 const USUARIO_MOCK = {
   id: "user-1",
@@ -33,7 +33,6 @@ const DOC_ROWS = [
     tipo_mime: "application/pdf",
     tamanho: 2048,
     created_at: "2026-03-14T14:00:00Z",
-    storage_key: "bpo-1/c1/tarefa_tarefa-1/uuid_anexo.pdf",
     criado_por_id: "user-1",
   },
 ];
@@ -108,7 +107,72 @@ describe("GET /api/tarefas/[tarefaId]/documentos", () => {
       tamanho: 2048,
       createdAt: "2026-03-14T14:00:00Z",
       autor: "Operador",
-      storageKey: expect.any(String),
     });
+    expect(json.data[0]).not.toHaveProperty("storageKey");
+  });
+});
+
+describe("POST /api/tarefas/[tarefaId]/documentos", () => {
+  beforeEach(() => {
+    vi.mocked(getCurrentUser).mockReset();
+    vi.mocked(createClient).mockReset();
+  });
+
+  it("retorna 401 quando não autenticado", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null);
+    const res = await POST(
+      new NextRequest("http://localhost/doc", { method: "POST" }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+    expect(res.status).toBe(401);
+    expect(json.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("retorna 400 quando não multipart", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const maybeSingle = vi.fn().mockResolvedValue({ data: TAREFA_ROW, error: null });
+    const eqBpo = vi.fn().mockReturnValue({ maybeSingle });
+    const eqId = vi.fn().mockReturnValue({ eq: eqBpo });
+    const fromMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ eq: eqId }),
+    });
+    vi.mocked(createClient).mockResolvedValue({
+      from: fromMock,
+      storage: { from: vi.fn() },
+    } as unknown as Awaited<ReturnType<typeof createClient>>);
+
+    const res = await POST(
+      new NextRequest("http://localhost/doc", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-1" }) }
+    );
+    const json = await res.json();
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe("BAD_REQUEST");
+  });
+
+  it("retorna 404 quando tarefa não existe", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const eqBpo = vi.fn().mockReturnValue({ maybeSingle });
+    const eqId = vi.fn().mockReturnValue({ eq: eqBpo });
+    const fromMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ eq: eqId }),
+    });
+    vi.mocked(createClient).mockResolvedValue({ from: fromMock } as unknown as Awaited<ReturnType<typeof createClient>>);
+
+    const res = await POST(
+      new NextRequest("http://localhost/doc", {
+        method: "POST",
+        headers: { "content-type": "multipart/form-data; boundary=x" },
+      }),
+      { params: Promise.resolve({ tarefaId: "tarefa-inexistente" }) }
+    );
+    const json = await res.json();
+    expect(res.status).toBe(404);
+    expect(json.error.code).toBe("NOT_FOUND");
   });
 });

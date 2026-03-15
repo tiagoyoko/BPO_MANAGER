@@ -6,16 +6,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { DocumentoItem } from "@/types/documentos";
 
-export type DocumentoItem = {
-  id: string;
-  nomeArquivo: string;
-  tipoMime: string;
-  tamanho: number;
-  createdAt: string;
-  autor: string | null;
-  storageKey: string;
-};
+export type { DocumentoItem };
 
 const PREVIEW_TIPOS = new Set([
   "application/pdf",

@@ -33,7 +33,6 @@ const DOC_ROWS = [
     tipo_mime: "application/pdf",
     tamanho: 1024,
     created_at: "2026-03-14T12:00:00Z",
-    storage_key: "bpo-1/c1/solicitacao_sol-1/uuid_arquivo.pdf",
     criado_por_id: "user-1",
   },
 ];
@@ -104,8 +103,8 @@ describe("GET /api/solicitacoes/[solicitacaoId]/documentos", () => {
       tamanho: 1024,
       createdAt: "2026-03-14T12:00:00Z",
       autor: "Operador",
-      storageKey: expect.any(String),
     });
+    expect(json.data[0]).not.toHaveProperty("storageKey");
   });
 });
 
