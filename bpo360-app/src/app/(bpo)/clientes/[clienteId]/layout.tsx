@@ -48,6 +48,12 @@ export default async function ClienteLayout({
           {podeVerConfig && (
             <>
               <Link
+                href={`/clientes/${clienteId}/area-de-trabalho`}
+                className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
+              >
+                Área de trabalho
+              </Link>
+              <Link
                 href={`/clientes/${clienteId}/tarefas`}
                 className="border-b-2 border-transparent px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[active]:border-primary data-[active]:text-foreground"
               >
