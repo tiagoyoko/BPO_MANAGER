@@ -1,5 +1,5 @@
 # generated: 2026-03-13
-# last_updated: 2026-03-14  # Story 2-6 revisada e concluida
+# last_updated: 2026-03-14  # Story 3-5 revisada e concluida
 # project: BPO_MANAGER
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-14"  # 3-2 done
+last_updated: "2026-03-14"  # 3-5 done
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -66,7 +66,7 @@ development_status:
   3-2-cliente-enviar-solicitacao-e-documentos-pelo-portal: done
   3-3-centralizar-comunicacao-por-cliente-timeline: backlog
   3-4-anexar-documentos-a-tarefas-e-solicitacoes: backlog
-  3-5-notificacao-de-atualizacao-para-o-cliente: backlog
+  3-5-notificacao-de-atualizacao-para-o-cliente: done
   3-6-vincular-comunicacao-as-rotinas-e-indicadores: backlog
   epic-3-retrospective: optional
 

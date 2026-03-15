@@ -10,12 +10,11 @@ import { canAccessModelos } from "@/lib/auth/rbac";
 const TIPOS_VALIDOS = ["documento_faltando", "duvida", "ajuste", "outro"] as const;
 const PRIORIDADES_VALIDAS = ["baixa", "media", "alta", "urgente"] as const;
 const STATUS_VALIDOS = ["aberta", "em_andamento", "resolvida", "fechada"] as const;
-const ORIGENS_VALIDAS = ["interno", "cliente"] as const;
 
 export type TipoSolicitacao = (typeof TIPOS_VALIDOS)[number];
 export type PrioridadeSolicitacao = (typeof PRIORIDADES_VALIDAS)[number];
 export type StatusSolicitacao = (typeof STATUS_VALIDOS)[number];
-export type OrigemSolicitacao = (typeof ORIGENS_VALIDAS)[number];
+export type OrigemSolicitacao = "interno" | "cliente";
 
 export type SolicitacaoListItem = {
   id: string;
