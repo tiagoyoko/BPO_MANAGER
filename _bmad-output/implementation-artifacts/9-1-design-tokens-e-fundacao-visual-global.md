@@ -1,6 +1,6 @@
 # Story 9.1: Design tokens e fundação visual global
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -65,6 +65,14 @@ so that **a interface pareça coesa, moderna e previsível em todas as telas**.
   - [x] Garantir foco visível e consistente com os novos tokens.
   - [x] Documentar no próprio story file quaisquer decisões de compatibilidade relevantes para as próximas stories do EP9.
 
+## Senior Developer Review (AI)
+
+- **Data:** 2026-03-17
+- **Revisor:** Tiago (code-review workflow)
+- **Resultado:** Aprovado com correções aplicadas.
+- **Achados corrigidos:** (1) Remoção de `antialiased` duplicado em `layout.tsx` (mantido apenas em `globals.css`). (2) Story file e sprint-status commitados no branch da story para rastreabilidade.
+- **ACs e tasks:** Todos validados como implementados.
+
 ## Dev Notes
 
 ### Contexto funcional e de UX
@@ -113,10 +121,13 @@ bpo360-app/src/components/ui/checkbox.tsx
 bpo360-app/src/components/ui/label.tsx
 ```
 
+<<<<<<< HEAD
 ### Riscos / Follow-up
 
 - **Build Next:** A falha atual de build (cacheComponents vs dynamic) está fora do escopo desta story, mas bloqueia CI e deploy. Registrar em backlog/sprint-status um item explícito para resolver antes de considerar 9.2 em produção.
 
+=======
+>>>>>>> story/9-1-design-tokens-e-fundacao-visual-global
 ### Fora de escopo explícito
 
 - Não implementar `AppShell` completo nesta story.
@@ -189,4 +200,9 @@ Codex GPT-5
 ### Change Log
 
 - 2026-03-15: Story 9.1 implementada — design tokens globais (neutros frios, teal primary, success/warning/info), tipografia no RootLayout, primitives (Button, Card, Badge, Input, Checkbox) adaptados; foco visível e contraste AA preservados; smoke via lint e testes.
+<<<<<<< HEAD
 
+=======
+- 2026-03-17: Code review concluído. Correções: antialiased removido de layout.tsx (evitar duplicação com globals.css); story file e sprint-status commitados no branch. Status → done.
+- 2026-03-17: Code review registrou follow-ups de alta prioridade; status retornado para `in-progress`.
+>>>>>>> story/9-1-design-tokens-e-fundacao-visual-global

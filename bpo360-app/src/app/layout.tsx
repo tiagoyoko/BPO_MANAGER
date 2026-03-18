@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   description: "Plataforma BPO financeiro – gestão de clientes e operação",
 };
 
+/** Fonte base do BPO360 — hierarquia tipográfica (Display, Section, Card, Body, Meta) parte desta raiz. */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   display: "swap",
@@ -27,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+      <body className={`${geistSans.className} min-h-screen`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
