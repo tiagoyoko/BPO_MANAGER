@@ -17,7 +17,7 @@ const { getCurrentUser } = await import("@/lib/auth/get-current-user") as {
 const { createClient } = await import("@/lib/supabase/server") as {
   createClient: ReturnType<typeof vi.fn>;
 };
-const { buscarUsuarioPorIdEBpo } = await import("@/lib/domain/clientes/repository") as {
+const { buscarUsuarioPorIdEBpo } = await import("@/lib/domain/clientes/repository") as unknown as {
   buscarUsuarioPorIdEBpo: ReturnType<typeof vi.fn>;
 };
 

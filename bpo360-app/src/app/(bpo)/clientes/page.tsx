@@ -7,8 +7,6 @@ import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { redirect } from "next/navigation";
 import { ClientesPageClient } from "./_components/clientes-page-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function ClientesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?error=no-profile");

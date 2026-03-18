@@ -3,12 +3,14 @@
  * GET /api/solicitacoes/[solicitacaoId] — detalhe da solicitação.
  * PATCH — altera status e dispara notificação quando uma solicitação do cliente é atualizada.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
 import { notificarClienteSolicitacaoAtualizada } from "@/lib/domain/notificacoes/notificar-cliente-solicitacao";
-import type { SolicitacaoDetalhe, StatusSolicitacao } from "../../route";
+import type { SolicitacaoDetalhe } from "@/app/api/solicitacoes/route";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { PatchSolicitacaoSchema } from "@/lib/api/schemas/solicitacoes";
 
 type SolicitacaoRowComCliente = {
   id: string;
@@ -26,31 +28,25 @@ type SolicitacaoRowComCliente = {
   clientes?: { nome_fantasia: string } | null;
 };
 
+/** Maps raw Supabase single-row response to typed row; documents the select() contract. */
+function toSolicitacaoRowComCliente(row: unknown): SolicitacaoRowComCliente {
+  return row as SolicitacaoRowComCliente;
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ solicitacaoId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   const isClienteFinal = user.role === "cliente_final";
   if (!isClienteFinal && !canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
 
   const { solicitacaoId } = await context.params;
   if (!solicitacaoId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "solicitacaoId é obrigatório." } },
-      { status: 400 }
-    );
+    return jsonError({ code: "BAD_REQUEST", message: "solicitacaoId é obrigatório." }, 400);
   }
 
   const supabase = await createClient();
@@ -61,20 +57,10 @@ export async function GET(
   if (!isClienteFinal) query = query.eq("bpo_id", user.bpoId);
   const { data: row, error } = await query.maybeSingle();
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
-  if (!row) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Solicitação não encontrada." } },
-      { status: 404 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
+  if (!row) return jsonError({ code: "NOT_FOUND", message: "Solicitação não encontrada." }, 404);
 
-  const r = row as SolicitacaoRowComCliente;
+  const r = toSolicitacaoRowComCliente(row);
   const detalhe: SolicitacaoDetalhe = {
     id: r.id,
     clienteId: r.cliente_id,
@@ -91,64 +77,25 @@ export async function GET(
     origem: r.origem as SolicitacaoDetalhe["origem"],
   };
 
-  return NextResponse.json({ data: detalhe, error: null });
+  return jsonSuccess(detalhe);
 }
-
-const STATUS_VALIDOS = ["aberta", "em_andamento", "resolvida", "fechada"] as const;
-
-export type PatchSolicitacaoBody = {
-  status?: StatusSolicitacao;
-};
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ solicitacaoId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { solicitacaoId } = await context.params;
   if (!solicitacaoId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "solicitacaoId é obrigatório." } },
-      { status: 400 }
-    );
+    return jsonError({ code: "BAD_REQUEST", message: "solicitacaoId é obrigatório." }, 400);
   }
 
-  let body: PatchSolicitacaoBody;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
-
-  const { status: newStatus } = body;
-  if (newStatus !== undefined && !STATUS_VALIDOS.includes(newStatus)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "STATUS_INVALIDO",
-          message: `status deve ser um de: ${STATUS_VALIDOS.join(", ")}.`,
-        },
-      },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, PatchSolicitacaoSchema);
+  if (!parsed.success) return parsed.response;
+  const { status: newStatus } = parsed.data;
 
   const supabase = await createClient();
 
@@ -159,18 +106,8 @@ export async function PATCH(
     .eq("bpo_id", user.bpoId)
     .maybeSingle();
 
-  if (fetchError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: fetchError.message } },
-      { status: 500 }
-    );
-  }
-  if (!current) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Solicitação não encontrada." } },
-      { status: 404 }
-    );
-  }
+  if (fetchError) return jsonError({ code: "DB_ERROR", message: fetchError.message }, 500);
+  if (!current) return jsonError({ code: "NOT_FOUND", message: "Solicitação não encontrada." }, 404);
 
   const currentRow = current as { cliente_id: string; status: string; origem: string };
   const statusAlterado =
@@ -183,12 +120,7 @@ export async function PATCH(
       .eq("id", solicitacaoId)
       .eq("bpo_id", user.bpoId);
 
-    if (updateError) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: updateError.message } },
-        { status: 500 }
-      );
-    }
+    if (updateError) return jsonError({ code: "DB_ERROR", message: updateError.message }, 500);
   }
 
   if (statusAlterado && currentRow.origem === "cliente") {
@@ -207,14 +139,9 @@ export async function PATCH(
     .eq("bpo_id", user.bpoId)
     .single();
 
-  if (selectError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: selectError.message } },
-      { status: 500 }
-    );
-  }
+  if (selectError) return jsonError({ code: "DB_ERROR", message: selectError.message }, 500);
 
-  const u = updated as SolicitacaoRowComCliente;
+  const u = toSolicitacaoRowComCliente(updated);
   const detalhe: SolicitacaoDetalhe = {
     id: u.id,
     clienteId: u.cliente_id,
@@ -231,5 +158,5 @@ export async function PATCH(
     origem: u.origem as SolicitacaoDetalhe["origem"],
   };
 
-  return NextResponse.json({ data: detalhe, error: null });
+  return jsonSuccess(detalhe);
 }

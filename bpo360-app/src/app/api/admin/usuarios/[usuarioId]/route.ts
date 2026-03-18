@@ -2,12 +2,14 @@
  * PATCH: editar usuário interno (nome, role, cliente_id). Apenas admin_bpo, mesmo BPO.
  * Story 8.2 – AC 3, 4.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canManageClienteUsers, canManageUsers } from "@/lib/auth/rbac";
 import type { PapelBpo } from "@/types/domain";
 import { validarClienteDoMesmoBpo } from "../_shared";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { PatchUsuarioSchema } from "@/lib/api/schemas/admin-usuarios";
 
 const ROLES_INTERNOS: PapelBpo[] = ["admin_bpo", "gestor_bpo", "operador_bpo"];
 const ROLE_CLIENTE_FINAL: PapelBpo = "cliente_final";
@@ -17,29 +19,13 @@ export async function PATCH(
   { params }: { params: Promise<{ usuarioId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   const { usuarioId } = await params;
-  if (!usuarioId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "usuarioId obrigatório." } },
-      { status: 400 }
-    );
-  }
+  if (!usuarioId) return jsonError({ code: "BAD_REQUEST", message: "usuarioId obrigatório." }, 400);
 
-  let body: { nome?: string; role?: PapelBpo; clienteId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, PatchUsuarioSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const supabase = await createClient();
 
@@ -49,33 +35,15 @@ export async function PATCH(
     .eq("id", usuarioId)
     .single();
 
-  if (fetchError || !existente) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Usuário não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (fetchError || !existente) return jsonError({ code: "NOT_FOUND", message: "Usuário não encontrado." }, 404);
 
-  if (existente.bpo_id !== user.bpoId) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (existente.bpo_id !== user.bpoId) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const isClienteFinal = existente.role === ROLE_CLIENTE_FINAL;
   if (isClienteFinal) {
-    if (!canManageClienteUsers(user)) {
-      return NextResponse.json(
-        { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-        { status: 403 }
-      );
-    }
+    if (!canManageClienteUsers(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   } else if (!canManageUsers(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
 
   const updates: Record<string, unknown> = {
@@ -86,27 +54,15 @@ export async function PATCH(
   if (body.role !== undefined) {
     if (isClienteFinal) {
       if (body.role !== ROLE_CLIENTE_FINAL) {
-        return NextResponse.json(
-          {
-            data: null,
-            error: {
-              code: "ROLE_INVALIDO",
-              message: "Usuário cliente_final não pode ser convertido por esta rota.",
-            },
-          },
-          { status: 400 }
+        return jsonError(
+          { code: "ROLE_INVALIDO", message: "Usuário cliente_final não pode ser convertido por esta rota." },
+          400
         );
       }
     } else if (!ROLES_INTERNOS.includes(body.role)) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "ROLE_INVALIDO",
-            message: "role deve ser admin_bpo, gestor_bpo ou operador_bpo.",
-          },
-        },
-        { status: 400 }
+      return jsonError(
+        { code: "ROLE_INVALIDO", message: "role deve ser admin_bpo, gestor_bpo ou operador_bpo." },
+        400
       );
     }
     updates.role = body.role;
@@ -114,15 +70,9 @@ export async function PATCH(
   if (body.clienteId !== undefined) {
     const clienteId = body.clienteId === "" || body.clienteId == null ? null : body.clienteId;
     if (isClienteFinal && !clienteId) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "CLIENTE_OBRIGATORIO",
-            message: "clienteId é obrigatório para usuário cliente_final.",
-          },
-        },
-        { status: 400 }
+      return jsonError(
+        { code: "CLIENTE_OBRIGATORIO", message: "clienteId é obrigatório para usuário cliente_final." },
+        400
       );
     }
     if (clienteId) {
@@ -145,23 +95,15 @@ export async function PATCH(
     .select()
     .single();
 
-  if (updateError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: updateError.message } },
-      { status: 500 }
-    );
-  }
+  if (updateError) return jsonError({ code: "DB_ERROR", message: updateError.message }, 500);
 
-  return NextResponse.json({
-    data: {
-      id: row.id,
-      nome: row.nome,
-      email: row.email,
-      role: row.role,
-      bpoId: row.bpo_id,
-      clienteId: row.cliente_id ?? null,
-      atualizadoEm: row.updated_at,
-    },
-    error: null,
+  return jsonSuccess({
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    role: row.role,
+    bpoId: row.bpo_id,
+    clienteId: row.cliente_id ?? null,
+    atualizadoEm: row.updated_at,
   });
 }

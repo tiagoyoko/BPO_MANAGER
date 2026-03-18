@@ -8,8 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 import type { EventoTimeline, SolicitacaoRow, ComentarioRow } from "@/app/api/clientes/[clienteId]/timeline/route";
 import { TimelineList } from "./_components/timeline-list";
 
-export const dynamic = "force-dynamic";
-
 async function carregarTimeline(
   supabase: Awaited<ReturnType<typeof createClient>>,
   bpoId: string,

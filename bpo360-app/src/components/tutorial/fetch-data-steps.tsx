@@ -33,8 +33,10 @@ const client = `'use client'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 
+type NoteRow = { id: number; title: string | null }
+
 export default function Page() {
-  const [notes, setNotes] = useState<any[] | null>(null)
+  const [notes, setNotes] = useState<NoteRow[] | null>(null)
   const supabase = createClient()
 
   useEffect(() => {

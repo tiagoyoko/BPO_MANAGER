@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BPO360 - Design Directions</title>
+    <style>
+      :root {
+        --bg: #f3f6f8;
+        --surface: #ffffff;
+        --surface-2: #eef4f5;
+        --ink: #142126;
+        --muted: #61727a;
+        --line: #d7e0e3;
+        --primary: #0f766e;
+        --primary-2: #155e75;
+        --success: #15803d;
+        --warning: #b45309;
+        --danger: #b91c1c;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 28%),
+          linear-gradient(180deg, #f8fbfc 0%, #eef3f5 100%);
+        color: var(--ink);
+      }
+      .page {
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 32px 24px 80px;
+      }
+      .hero {
+        margin-bottom: 28px;
+        padding: 28px;
+        border: 1px solid rgba(21, 94, 117, 0.14);
+        border-radius: 24px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(232,243,245,0.92));
+        box-shadow: 0 24px 70px rgba(20, 33, 38, 0.08);
+      }
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: 34px;
+        line-height: 1.1;
+      }
+      .hero p {
+        margin: 0;
+        max-width: 860px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 24px;
+      }
+      .direction {
+        background: rgba(255,255,255,0.84);
+        border: 1px solid rgba(20, 33, 38, 0.08);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 16px 50px rgba(20, 33, 38, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .direction header {
+        padding: 22px 22px 14px;
+        border-bottom: 1px solid rgba(20, 33, 38, 0.08);
+      }
+      .eyebrow {
+        display: inline-block;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: rgba(15, 118, 110, 0.12);
+        color: var(--primary);
+      }
+      .direction h2 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .direction p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .preview {
+        padding: 18px;
+        background: linear-gradient(180deg, rgba(243,246,248,0.7), rgba(255,255,255,0.96));
+      }
+      .mock {
+        min-height: 410px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        min-height: 410px;
+      }
+      .nav {
+        padding: 18px 14px;
+        background: #10343e;
+        color: #d7e7eb;
+      }
+      .nav .dot {
+        width: 38px;
+        height: 38px;
+        margin-bottom: 16px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.12);
+      }
+      .main {
+        padding: 18px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .title {
+        width: 220px;
+        height: 18px;
+        border-radius: 999px;
+        background: #d6e3e6;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .pill {
+        width: 78px;
+        height: 14px;
+        border-radius: 999px;
+        background: #dfe8eb;
+      }
+      .stats, .cards3, .cards2 {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .stats { grid-template-columns: repeat(4, 1fr); }
+      .cards3 { grid-template-columns: 1.3fr 1fr 1fr; }
+      .cards2 { grid-template-columns: 1.4fr 1fr; }
+      .card {
+        min-height: 72px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: linear-gradient(180deg, #fff, #f6fafb);
+      }
+      .card.soft {
+        background: linear-gradient(180deg, #edf8f7, #f9fcfc);
+        border-color: rgba(15, 118, 110, 0.18);
+      }
+      .card.warn {
+        background: linear-gradient(180deg, #fff7ed, #fffdf8);
+        border-color: rgba(180, 83, 9, 0.18);
+      }
+      .card.risk {
+        background: linear-gradient(180deg, #fef2f2, #fffafa);
+        border-color: rgba(185, 28, 28, 0.16);
+      }
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+      .row {
+        height: 56px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 12px;
+      }
+      .triple {
+        display: grid;
+        grid-template-columns: 1fr 1fr 0.9fr;
+        gap: 12px;
+      }
+      .caption {
+        padding: 0 22px 22px;
+      }
+      .caption ul {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .direction:nth-child(2) .nav { background: #12283b; }
+      .direction:nth-child(3) .nav { background: #203026; }
+      .direction:nth-child(4) .nav { background: #2d1f31; }
+      @media (max-width: 720px) {
+        .page { padding: 20px 14px 48px; }
+        .hero { padding: 22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>Design Directions for BPO360</h1>
+        <p>
+          Quatro direções visuais para modernizar a experiência atual do produto
+          a partir das páginas já implementadas. O foco está em shell BPO,
+          carteira de clientes, painel Hoje e workspace operacional por cliente.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="direction">
+          <header>
+            <span class="eyebrow">Direction 01</span>
+            <h2>Cockpit Executivo</h2>
+            <p>
+              Estrutura mais premium e estratégica. Ideal para a Home do gestor e
+              a carteira de clientes com leitura de risco, margem e integração.
+            </p>
+          </header>
+          <div class="preview">
+            <div class="mock shell">
+              <aside class="nav">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+              </aside>
+              <div class="main">
+                <div class="topbar"><div class="title"></div><div class="actions"><div class="pill"></div><div class="pill"></div></div></div>
+                <div class="stats">
+                  <div class="card soft"></div><div class="card"></div><div class="card warn"></div><div class="card risk"></div>
+                </div>
+                <div class="cards3">
+                  <div class="card soft"></div><div class="card"></div><div class="card"></div>
+                </div>
+                <div class="list">
+                  <div class="row"></div><div class="row"></div><div class="row"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">
+            <ul>
+              <li>Mais indicado para gestores, sócios e leitura de carteira.</li>
+              <li>Resumo executivo forte antes do detalhe operacional.</li>
+              <li>Combina bem com cards de risco, saúde financeira e margem.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="direction">
+          <header>
+            <span class="eyebrow">Direction 02</span>
+            <h2>Linear Operacional</h2>
+            <p>
+              Direção mais limpa, rápida e densa. Ideal para o painel Hoje,
+              listas de tarefas e triagem diária de operadores.
+            </p>
+          </header>
+          <div class="preview">
+            <div class="mock shell">
+              <aside class="nav">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+              </aside>
+              <div class="main">
+                <div class="topbar"><div class="title"></div><div class="actions"><div class="pill"></div><div class="pill"></div></div></div>
+                <div class="cards2">
+                  <div class="card soft"></div><div class="card"></div>
+                </div>
+                <div class="list">
+                  <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">
+            <ul>
+              <li>Menos decoração, mais cadência e velocidade de leitura.</li>
+              <li>Favorece listas priorizadas e atalhos de ação.</li>
+              <li>Ótima base para `Hoje`, `Tarefas` e triagem de solicitações.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="direction">
+          <header>
+            <span class="eyebrow">Direction 03</span>
+            <h2>Workspace de Foco</h2>
+            <p>
+              Direção centrada no fluxo “um cliente por vez”. Prioriza contexto
+              contínuo, checklist, financeiro e comunicação na mesma tela.
+            </p>
+          </header>
+          <div class="preview">
+            <div class="mock shell">
+              <aside class="nav">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+              </aside>
+              <div class="main">
+                <div class="topbar"><div class="title"></div><div class="actions"><div class="pill"></div><div class="pill"></div></div></div>
+                <div class="triple">
+                  <div class="card soft" style="min-height:270px"></div>
+                  <div class="card" style="min-height:270px"></div>
+                  <div class="card warn" style="min-height:270px"></div>
+                </div>
+                <div class="cards2" style="margin-top:12px">
+                  <div class="card"></div><div class="card"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">
+            <ul>
+              <li>Mais aderente à `area-de-trabalho` já existente no projeto.</li>
+              <li>Destaca o fluxo de execução sem trocar de contexto.</li>
+              <li>É a melhor direção para ser o diferencial real do produto.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="direction">
+          <header>
+            <span class="eyebrow">Direction 04</span>
+            <h2>Portal Confiável</h2>
+            <p>
+              Variação mais leve e acolhedora para login e portal do cliente,
+              mantendo a mesma base visual do BPO sem herdar sua densidade.
+            </p>
+          </header>
+          <div class="preview">
+            <div class="mock">
+              <div style="padding:26px;">
+                <div class="card soft" style="min-height:104px; margin-bottom:14px;"></div>
+                <div class="split">
+                  <div class="card" style="min-height:126px;"></div>
+                  <div class="card warn" style="min-height:126px;"></div>
+                </div>
+                <div class="list" style="margin-top:14px;">
+                  <div class="row"></div><div class="row"></div><div class="row"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">
+            <ul>
+              <li>Menor densidade, mais acolhimento e mais explicação contextual.</li>
+              <li>Bom fit para `portal`, preferências e detalhe de solicitações.</li>
+              <li>Evita que o cliente final veja a mesma agressividade operacional do backoffice.</li>
+            </ul>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

@@ -7,8 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buscarClientePorIdEBpo } from "@/lib/domain/clientes/repository";
 import { TarefasClienteClient } from "./_components/tarefas-cliente-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function TarefasClientePage({
   params,
 }: {

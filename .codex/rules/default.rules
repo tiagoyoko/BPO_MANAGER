@@ -21,3 +21,6 @@ prefix_rule(pattern=["git", "-C", "/tmp/bpo-dev-story-skill-worktree-2"], decisi
 prefix_rule(pattern=["git", "-C", "/tmp/bpo-main-merge-worktree", "merge"], decision="allow")
 prefix_rule(pattern=["git", "-C", "/Users/tiagoyokoyama/BPO_MANAGER", "merge", "main"], decision="allow")
 prefix_rule(pattern=["git", "-C", "/Users/tiagoyokoyama/BPO_MANAGER", "add", "-A"], decision="allow")
+prefix_rule(pattern=["git", "-C", "/Users/tiagoyokoyama/BPO_MANAGER/.worktrees/1-8-painel-das-empresas-resumo-em-numeros", "add", "--"], decision="allow")
+prefix_rule(pattern=["git", "-C", "/Users/tiagoyokoyama/BPO_MANAGER/.worktrees/1-8-painel-das-empresas-resumo-em-numeros", "commit", "-m"], decision="allow")
+prefix_rule(pattern=["python3", "/Users/tiagoyokoyama/BPO_MANAGER/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py"], decision="allow")

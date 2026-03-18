@@ -116,8 +116,10 @@ export function TarefasClienteClient({ clienteId }: Props) {
   const tarefasPorDia = useMemo(() => {
     const map: Record<string, TarefaListItem[]> = {};
     for (const t of tarefas) {
-      if (!map[t.dataVencimento]) map[t.dataVencimento] = [];
-      map[t.dataVencimento].push(t);
+      const key = t.dataVencimento;
+      const arr = map[key];
+      if (!arr) map[key] = [t];
+      else arr.push(t);
     }
     return map;
   }, [tarefas]);

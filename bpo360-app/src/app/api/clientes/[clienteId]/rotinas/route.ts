@@ -2,7 +2,7 @@
  * Story 2.2: GET rotinas do cliente | POST aplicar modelo de rotina ao cliente.
  * Guard: admin_bpo, gestor_bpo, operador_bpo. Cliente e modelo devem ser do mesmo bpo_id.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
@@ -11,15 +11,10 @@ import {
   buscarUsuarioPorIdEBpo,
 } from "@/lib/domain/clientes/repository";
 import { gerarTarefasRecorrentes } from "@/lib/domain/rotinas/gerar-tarefas-recorrentes";
-import type {
-  AplicarRotinaInput,
-  Frequencia,
-  Prioridade,
-  RotinaCliente,
-} from "@/lib/domain/rotinas/types";
+import type { Frequencia, Prioridade, RotinaCliente } from "@/lib/domain/rotinas/types";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { AplicarRotinaSchema } from "@/lib/api/schemas/rotinas";
 
-const FREQUENCIAS_VALIDAS = ["diaria", "semanal", "mensal", "custom"] as const;
-const PRIORIDADES_VALIDAS = ["baixa", "media", "alta", "urgente"] as const;
 type RotinaClienteSelectRow = {
   id: string;
   cliente_id: string;
@@ -31,14 +26,6 @@ type RotinaClienteSelectRow = {
   created_at: string;
   updated_at: string;
 };
-
-function isFrequencia(x: string): x is Frequencia {
-  return FREQUENCIAS_VALIDAS.includes(x as Frequencia);
-}
-
-function isPrioridade(x: string): x is Prioridade {
-  return PRIORIDADES_VALIDAS.includes(x as Prioridade);
-}
 
 async function limparRotinaIncompleta(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -57,26 +44,11 @@ export async function GET(
   context: { params: Promise<{ clienteId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { clienteId } = await context.params;
-  if (!clienteId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "clienteId obrigatório." } },
-      { status: 400 }
-    );
-  }
+  if (!clienteId) return jsonError({ code: "BAD_REQUEST", message: "clienteId obrigatório." }, 400);
 
   const supabase = await createClient();
   const { data: cliente } = await buscarClientePorIdEBpo({
@@ -84,12 +56,7 @@ export async function GET(
     clienteId,
     bpoId: user.bpoId,
   });
-  if (!cliente) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Cliente não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (!cliente) return jsonError({ code: "NOT_FOUND", message: "Cliente não encontrado." }, 404);
 
   const { data: rows, error } = await supabase
     .from("rotinas_cliente")
@@ -98,12 +65,7 @@ export async function GET(
     .eq("bpo_id", user.bpoId)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
 
   const rotinas: RotinaCliente[] = ((rows ?? []) as RotinaClienteSelectRow[]).map((r) => ({
     id: r.id,
@@ -117,7 +79,7 @@ export async function GET(
     atualizadoEm: r.updated_at,
   }));
 
-  return NextResponse.json({ data: { rotinas }, error: null });
+  return jsonSuccess({ rotinas });
 }
 
 // ─── POST /api/clientes/[clienteId]/rotinas ───────────────────────────────────
@@ -127,59 +89,18 @@ export async function POST(
   context: { params: Promise<{ clienteId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { clienteId } = await context.params;
-  if (!clienteId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "clienteId obrigatório." } },
-      { status: 400 }
-    );
-  }
+  if (!clienteId) return jsonError({ code: "BAD_REQUEST", message: "clienteId obrigatório." }, 400);
 
-  let body: AplicarRotinaInput;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
-
-  if (!body.rotinaModeloId || !body.dataInicio) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "rotinaModeloId e dataInicio são obrigatórios." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, AplicarRotinaSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const frequencia = body.frequencia ?? "mensal";
-  if (!isFrequencia(frequencia)) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "frequencia inválida." } },
-      { status: 400 }
-    );
-  }
-
   const prioridade = body.prioridade ?? "media";
-  if (!isPrioridade(prioridade)) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "prioridade inválida." } },
-      { status: 400 }
-    );
-  }
 
   const supabase = await createClient();
 
@@ -188,12 +109,7 @@ export async function POST(
     clienteId,
     bpoId: user.bpoId,
   });
-  if (!cliente) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Cliente não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (!cliente) return jsonError({ code: "NOT_FOUND", message: "Cliente não encontrado." }, 404);
 
   const { data: modelo, error: errModelo } = await supabase
     .from("rotinas_modelo")
@@ -202,12 +118,8 @@ export async function POST(
     .eq("bpo_id", user.bpoId)
     .maybeSingle();
 
-  if (errModelo || !modelo) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Modelo de rotina não encontrado ou não pertence ao seu BPO." } },
-      { status: 404 }
-    );
-  }
+  if (errModelo || !modelo)
+    return jsonError({ code: "NOT_FOUND", message: "Modelo de rotina não encontrado ou não pertence ao seu BPO." }, 404);
 
   if (body.responsavelPadraoId) {
     const { data: responsavel, error: errResponsavel } = await buscarUsuarioPorIdEBpo({
@@ -216,25 +128,12 @@ export async function POST(
       bpoId: user.bpoId,
     });
 
-    if (errResponsavel) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: errResponsavel.message } },
-        { status: 500 }
-      );
-    }
-
-    if (!responsavel) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "RESPONSAVEL_INVALIDO",
-            message: "responsavelPadraoId deve pertencer ao mesmo BPO do usuário autenticado.",
-          },
-        },
-        { status: 400 }
-      );
-    }
+    if (errResponsavel) return jsonError({ code: "DB_ERROR", message: errResponsavel.message }, 500);
+    if (!responsavel)
+      return jsonError({
+        code: "RESPONSAVEL_INVALIDO",
+        message: "responsavelPadraoId deve pertencer ao mesmo BPO do usuário autenticado.",
+      }, 400);
   }
 
   const { data: rotinaCliente, error: errRotina } = await supabase
@@ -251,12 +150,8 @@ export async function POST(
     .select("id, cliente_id, rotina_modelo_id, data_inicio, frequencia, responsavel_padrao_id, prioridade, created_at, updated_at")
     .single();
 
-  if (errRotina || !rotinaCliente) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errRotina?.message ?? "Falha ao criar rotina." } },
-      { status: 500 }
-    );
-  }
+  if (errRotina || !rotinaCliente)
+    return jsonError({ code: "DB_ERROR", message: errRotina?.message ?? "Falha ao criar rotina." }, 500);
 
   const rc = rotinaCliente as RotinaClienteSelectRow;
   const { count, error: errGerar } = await gerarTarefasRecorrentes({
@@ -274,11 +169,7 @@ export async function POST(
 
   if (errGerar) {
     await limparRotinaIncompleta({ supabase, rotinaClienteId: rc.id });
-
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errGerar } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: errGerar }, 500);
   }
 
   const rotinaClienteApi: RotinaCliente = {
@@ -293,14 +184,5 @@ export async function POST(
     atualizadoEm: rc.updated_at,
   };
 
-  return NextResponse.json(
-    {
-      data: {
-        rotinaCliente: rotinaClienteApi,
-        tarefasGeradas: count,
-      },
-      error: null,
-    },
-    { status: 201 }
-  );
+  return jsonSuccess({ rotinaCliente: rotinaClienteApi, tarefasGeradas: count }, 201);
 }

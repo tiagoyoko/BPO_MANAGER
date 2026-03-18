@@ -173,7 +173,7 @@ describe("notificarClienteSolicitacaoAtualizada", () => {
 
   it("gera payload com resumo e link do portal quando deve notificar", async () => {
     const origNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string>).NODE_ENV = "development";
     let call = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === "cliente_preferencias") {
@@ -215,6 +215,6 @@ describe("notificarClienteSolicitacaoAtualizada", () => {
       portalPath: "/portal/solicitacoes/sol1",
       resumo: "Sua solicitacao #sol1 teve o status atualizado.",
     });
-    process.env.NODE_ENV = origNodeEnv;
+    (process.env as Record<string, string>).NODE_ENV = origNodeEnv ?? "test";
   });
 });

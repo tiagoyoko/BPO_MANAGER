@@ -23,6 +23,7 @@ export function computarErpDetalhes(
 ): ErpDetalhesCliente | null {
   if (!integracoes || integracoes.length === 0) return null;
   const principal = integracoes.find((e) => e.ativo) ?? integracoes[0];
+  if (!principal) return null;
   return {
     tipoErp: principal.tipo_erp,
     ultimaAlteracao: principal.token_configurado_em,

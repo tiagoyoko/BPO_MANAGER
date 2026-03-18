@@ -15,7 +15,7 @@ const { createClient } = await import("@/lib/supabase/server") as {
 };
 const { notificarClienteSolicitacaoAtualizada } = await import(
   "@/lib/domain/notificacoes/notificar-cliente-solicitacao"
-) as {
+) as unknown as {
   notificarClienteSolicitacaoAtualizada: ReturnType<typeof vi.fn>;
 };
 

@@ -9,8 +9,6 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminUsuariosClient } from "./_components/admin-usuarios-client";
 import type { ClienteOption, UsuarioListItem } from "./_components/usuarios-table";
 
-export const dynamic = "force-dynamic";
-
 export default async function AdminUsuariosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?error=no-profile");

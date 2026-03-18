@@ -27,7 +27,7 @@ export default async function SolicitacaoDetalhePage({
 
   if (error || !row) notFound();
 
-  const r = row as {
+  const r = row as unknown as {
     id: string;
     cliente_id: string;
     titulo: string;

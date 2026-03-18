@@ -230,8 +230,9 @@ export async function GET(
       }
 
       for (const rotinaClienteId of Object.keys(rotinaModeloPorRotinaClienteId)) {
+        const modeloId = rotinaModeloPorRotinaClienteId[rotinaClienteId];
         tipoServicoPorRotinaClienteId[rotinaClienteId] =
-          tipoServicoPorRotinaModeloId[rotinaModeloPorRotinaClienteId[rotinaClienteId]] ?? null;
+          modeloId !== undefined ? (tipoServicoPorRotinaModeloId[modeloId] ?? null) : null;
       }
     }
   }

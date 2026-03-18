@@ -3,19 +3,19 @@
  * Story 2.3 Task 4: PATCH para editar status.
  * Guard: mesmo bpo_id.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { PatchTarefaSchema } from "@/lib/api/schemas/tarefas";
 import type {
   TarefaDetalhe,
   TarefaChecklistItem,
   TarefaHistoricoItem,
   SolicitacaoRelacionada,
-  StatusTarefa,
 } from "@/lib/domain/rotinas/types";
 
-const STATUS_VALIDOS: StatusTarefa[] = ["a_fazer", "em_andamento", "concluida", "atrasada", "bloqueada"];
 
 type TarefaRow = {
   id: string;
@@ -58,31 +58,21 @@ type ChecklistLogRow = {
   } | null;
 };
 
+/** Maps raw Supabase response to typed checklist log rows; documents the select() contract. */
+function toChecklistLogRows(data: unknown): ChecklistLogRow[] {
+  return (Array.isArray(data) ? data : []) as ChecklistLogRow[];
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ tarefaId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { tarefaId } = await context.params;
-  if (!tarefaId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "tarefaId obrigatório." } },
-      { status: 400 }
-    );
-  }
+  if (!tarefaId) return jsonError({ code: "BAD_REQUEST", message: "tarefaId obrigatório." }, 400);
 
   const supabase = await createClient();
   const { data: tarefaRow, error: errTarefa } = await supabase
@@ -92,18 +82,8 @@ export async function GET(
     .eq("bpo_id", user.bpoId)
     .maybeSingle();
 
-  if (errTarefa) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errTarefa.message } },
-      { status: 500 }
-    );
-  }
-  if (!tarefaRow) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Tarefa não encontrada." } },
-      { status: 404 }
-    );
-  }
+  if (errTarefa) return jsonError({ code: "DB_ERROR", message: errTarefa.message }, 500);
+  if (!tarefaRow) return jsonError({ code: "NOT_FOUND", message: "Tarefa não encontrada." }, 404);
 
   const t = tarefaRow as TarefaRow;
   const { data: checklistRows, error: errCheck } = await supabase
@@ -112,12 +92,7 @@ export async function GET(
     .eq("tarefa_id", tarefaId)
     .order("ordem", { ascending: true });
 
-  if (errCheck) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errCheck.message } },
-      { status: 500 }
-    );
-  }
+  if (errCheck) return jsonError({ code: "DB_ERROR", message: errCheck.message }, 500);
 
   const checklistConcluidoPorIds = Array.from(
     new Set(
@@ -145,16 +120,11 @@ export async function GET(
     .eq("tarefa_id", tarefaId)
     .order("ocorrido_em", { ascending: false });
 
-  if (errHistorico) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: errHistorico.message } },
-      { status: 500 }
-    );
-  }
+  if (errHistorico) return jsonError({ code: "DB_ERROR", message: errHistorico.message }, 500);
 
   const historicoUsuarioIds = Array.from(
     new Set(
-      ((historicoRows ?? []) as ChecklistLogRow[])
+      toChecklistLogRows(historicoRows)
         .map((entry) => entry.usuario_id)
         .filter((value): value is string => Boolean(value))
     )
@@ -198,7 +168,7 @@ export async function GET(
     concluidoEm: c.concluido_em,
   }));
 
-  const historico: TarefaHistoricoItem[] = ((historicoRows ?? []) as ChecklistLogRow[]).map((entry) => ({
+  const historico: TarefaHistoricoItem[] = toChecklistLogRows(historicoRows).map((entry) => ({
     id: entry.id,
     itemId: entry.tarefa_checklist_item_id,
     itemTitulo: entry.item?.titulo ?? "Item removido",
@@ -246,7 +216,7 @@ export async function GET(
     solicitacoesAbertasCount,
   };
 
-  return NextResponse.json({ data, error: null });
+  return jsonSuccess(data);
 }
 
 export async function PATCH(
@@ -254,50 +224,15 @@ export async function PATCH(
   context: { params: Promise<{ tarefaId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { tarefaId } = await context.params;
-  if (!tarefaId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "tarefaId obrigatório." } },
-      { status: 400 }
-    );
-  }
+  if (!tarefaId) return jsonError({ code: "BAD_REQUEST", message: "tarefaId obrigatório." }, 400);
 
-  let body: { status?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo inválido." } },
-      { status: 400 }
-    );
-  }
-
-  const status = body.status as string | undefined;
-  if (!status || !STATUS_VALIDOS.includes(status as StatusTarefa)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "STATUS_INVALIDO",
-          message: "status deve ser um de: a_fazer, em_andamento, concluida, atrasada, bloqueada.",
-        },
-      },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, PatchTarefaSchema);
+  if (!parsed.success) return parsed.response;
+  const status = parsed.data.status;
 
   const supabase = await createClient();
   if (status === "concluida") {
@@ -307,27 +242,19 @@ export async function PATCH(
       .eq("tarefa_id", tarefaId)
       .eq("obrigatorio", true);
 
-    if (errChecklist) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: errChecklist.message } },
-        { status: 500 }
-      );
-    }
+    if (errChecklist) return jsonError({ code: "DB_ERROR", message: errChecklist.message }, 500);
 
     const possuiObrigatorioPendente = ((itensObrigatorios ?? []) as Array<{ id: string; concluido: boolean }>).some(
       (item) => !item.concluido
     );
 
     if (possuiObrigatorioPendente) {
-      return NextResponse.json(
+      return jsonError(
         {
-          data: null,
-          error: {
-            code: "CHECKLIST_INCOMPLETO",
-            message: "Complete todos os itens obrigatórios do checklist antes de concluir a tarefa.",
-          },
+          code: "CHECKLIST_INCOMPLETO",
+          message: "Complete todos os itens obrigatórios do checklist antes de concluir a tarefa.",
         },
-        { status: 400 }
+        400
       );
     }
   }
@@ -340,33 +267,20 @@ export async function PATCH(
     .select("id, titulo, data_vencimento, status, prioridade, responsavel_id, cliente_id, rotina_cliente_id, created_at, updated_at")
     .single();
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
-  if (!updated) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Tarefa não encontrada." } },
-      { status: 404 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
+  if (!updated) return jsonError({ code: "NOT_FOUND", message: "Tarefa não encontrada." }, 404);
 
   const u = updated as TarefaRow;
-  return NextResponse.json({
-    data: {
-      id: u.id,
-      titulo: u.titulo,
-      dataVencimento: u.data_vencimento,
-      status: u.status,
-      prioridade: u.prioridade,
-      responsavelId: u.responsavel_id,
-      clienteId: u.cliente_id,
-      rotinaClienteId: u.rotina_cliente_id,
-      criadoEm: u.created_at,
-      atualizadoEm: u.updated_at,
-    },
-    error: null,
+  return jsonSuccess({
+    id: u.id,
+    titulo: u.titulo,
+    dataVencimento: u.data_vencimento,
+    status: u.status,
+    prioridade: u.prioridade,
+    responsavelId: u.responsavel_id,
+    clienteId: u.cliente_id,
+    rotinaClienteId: u.rotina_cliente_id,
+    criadoEm: u.created_at,
+    atualizadoEm: u.updated_at,
   });
 }

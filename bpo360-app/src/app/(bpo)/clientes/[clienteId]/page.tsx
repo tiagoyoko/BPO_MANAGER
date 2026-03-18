@@ -6,8 +6,6 @@ import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { redirect } from "next/navigation";
 import { RotinasClienteSection } from "./_components/rotinas-cliente-section";
 
-export const dynamic = "force-dynamic";
-
 export default async function ClienteResumoPage({
   params,
 }: {

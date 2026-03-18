@@ -114,16 +114,19 @@ describe("gerarTarefasRecorrentes", () => {
     expect(result.count).toBe(12);
     expect(insertItem).toHaveBeenCalledTimes(12 * 2);
 
-    const firstTarefaId = insertItem.mock.calls[0][0].tarefa_id;
-    const callsForFirstTarefa = insertItem.mock.calls.filter((c) => c[0].tarefa_id === firstTarefaId);
+    const firstCall = insertItem.mock.calls[0];
+    const firstTarefaId = firstCall?.[0]?.tarefa_id;
+    const callsForFirstTarefa = insertItem.mock.calls.filter((c) => c[0]?.tarefa_id === firstTarefaId);
     expect(callsForFirstTarefa.length).toBe(2);
-    expect(callsForFirstTarefa[0][0]).toMatchObject({
+    const call0 = callsForFirstTarefa[0]?.[0];
+    expect(call0).toMatchObject({
       titulo: "Item A",
       obrigatorio: true,
       ordem: 0,
       concluido: false,
     });
-    expect(callsForFirstTarefa[1][0]).toMatchObject({
+    const call1 = callsForFirstTarefa[1]?.[0];
+    expect(call1).toMatchObject({
       titulo: "Item B",
       descricao: "Desc",
       obrigatorio: false,

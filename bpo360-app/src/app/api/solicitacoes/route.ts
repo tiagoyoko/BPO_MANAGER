@@ -2,12 +2,16 @@
  * Story 3.1 + 3.2: GET /api/solicitacoes (lista com filtros) | POST (criar solicitação).
  * BPO: canAccessModelos; cliente_final: só próprio cliente (GET filtrado, POST ignora body.clienteId e usa get_my_cliente_id; origem 'cliente').
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { PostSolicitacaoSchema } from "@/lib/api/schemas/solicitacoes";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for type export (typeof X)[number]
 const TIPOS_VALIDOS = ["documento_faltando", "duvida", "ajuste", "outro"] as const;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for type export (typeof X)[number]
 const PRIORIDADES_VALIDAS = ["baixa", "media", "alta", "urgente"] as const;
 const STATUS_VALIDOS = ["aberta", "em_andamento", "resolvida", "fechada"] as const;
 
@@ -54,37 +58,22 @@ type SolicitacaoRowComCliente = SolicitacaoRow & {
   clientes?: { nome_fantasia: string } | null;
 };
 
-export type PostSolicitacaoBody = {
-  clienteId: string;
-  titulo: string;
-  descricao?: string;
-  tipo: TipoSolicitacao;
-  prioridade: PrioridadeSolicitacao;
-  tarefaId?: string | null;
-};
+/** Maps raw Supabase list response to typed rows; documents the select() contract. */
+function toSolicitacaoRowComClienteList(data: unknown): SolicitacaoRowComCliente[] {
+  return (Array.isArray(data) ? data : []) as SolicitacaoRowComCliente[];
+}
 
 // ─── GET /api/solicitacoes ────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   const isClienteFinal = user.role === "cliente_final";
   if (!isClienteFinal && !canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
   if (isClienteFinal && !user.clienteId) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Cliente não identificado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Cliente não identificado." }, 403);
   }
 
   const { searchParams } = new URL(request.url);
@@ -118,14 +107,9 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
 
-  const list = (rows ?? []) as SolicitacaoRowComCliente[];
+  const list = toSolicitacaoRowComClienteList(rows);
   const solicitacoes: SolicitacaoListItem[] = list.map((r) => ({
     id: r.id,
     clienteId: r.cliente_id,
@@ -142,86 +126,37 @@ export async function GET(request: NextRequest) {
     origem: r.origem as OrigemSolicitacao,
   }));
 
-  return NextResponse.json({
-    data: { solicitacoes, total: count ?? 0, page, limit },
-    error: null,
-  });
+  return jsonSuccess({ solicitacoes, total: count ?? 0, page, limit });
 }
 
 // ─── POST /api/solicitacoes ───────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   const isClienteFinal = user.role === "cliente_final";
   if (!isClienteFinal && !canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
   if (isClienteFinal && !user.clienteId) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Cliente não identificado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Cliente não identificado." }, 403);
   }
 
-  let body: PostSolicitacaoBody;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, PostSolicitacaoSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const { clienteId: bodyClienteId, titulo, descricao, tipo, prioridade, tarefaId } = body;
-  const tituloNormalizado = titulo?.trim() ?? "";
-  const descricaoNormalizada = descricao?.trim() ?? "";
+  const tituloNormalizado = titulo.trim();
+  const descricaoNormalizada = descricao.trim();
   const clienteId = isClienteFinal ? user.clienteId! : (bodyClienteId ?? "").trim() || null;
-  if (!clienteId || !tituloNormalizado || !descricaoNormalizada || !tipo || !prioridade) {
-    return NextResponse.json(
+  if (!clienteId) {
+    return jsonError(
       {
-        data: null,
-        error: {
-          code: "CAMPOS_OBRIGATORIOS",
-          message: isClienteFinal
-            ? "titulo, descricao, tipo e prioridade são obrigatórios."
-            : "clienteId, titulo, descricao, tipo e prioridade são obrigatórios.",
-        },
+        code: "CAMPOS_OBRIGATORIOS",
+        message: "clienteId é obrigatório para solicitações do BPO.",
       },
-      { status: 400 }
-    );
-  }
-  if (!TIPOS_VALIDOS.includes(tipo)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "TIPO_INVALIDO",
-          message: `tipo deve ser um de: ${TIPOS_VALIDOS.join(", ")}.`,
-        },
-      },
-      { status: 400 }
-    );
-  }
-  if (!PRIORIDADES_VALIDAS.includes(prioridade)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "PRIORIDADE_INVALIDA",
-          message: `prioridade deve ser uma de: ${PRIORIDADES_VALIDAS.join(", ")}.`,
-        },
-      },
-      { status: 400 }
+      400
     );
   }
 
@@ -234,22 +169,11 @@ export async function POST(request: NextRequest) {
       .eq("id", tarefaId)
       .eq("bpo_id", user.bpoId)
       .maybeSingle();
-    if (errTarefa) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: errTarefa.message } },
-        { status: 500 }
-      );
-    }
+    if (errTarefa) return jsonError({ code: "DB_ERROR", message: errTarefa.message }, 500);
     if (!tarefa || (tarefa as { cliente_id: string }).cliente_id !== clienteId) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "TAREFA_INVALIDA",
-            message: "tarefaId deve ser uma tarefa do mesmo cliente e do seu BPO.",
-          },
-        },
-        { status: 400 }
+      return jsonError(
+        { code: "TAREFA_INVALIDA", message: "tarefaId deve ser uma tarefa do mesmo cliente e do seu BPO." },
+        400
       );
     }
   }
@@ -261,23 +185,9 @@ export async function POST(request: NextRequest) {
       .eq("id", clienteId)
       .eq("bpo_id", user.bpoId)
       .maybeSingle();
-    if (errCliente) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: errCliente.message } },
-        { status: 500 }
-      );
-    }
+    if (errCliente) return jsonError({ code: "DB_ERROR", message: errCliente.message }, 500);
     if (!cliente) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "CLIENTE_INVALIDO",
-            message: "clienteId deve pertencer ao seu BPO.",
-          },
-        },
-        { status: 400 }
-      );
+      return jsonError({ code: "CLIENTE_INVALIDO", message: "clienteId deve pertencer ao seu BPO." }, 400);
     }
   }
 
@@ -290,10 +200,7 @@ export async function POST(request: NextRequest) {
     bpoIdForInsert = user.bpoId ?? "";
   }
   if (!bpoIdForInsert) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: "BPO do cliente não encontrado." } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: "BPO do cliente não encontrado." }, 500);
   }
 
   const { data: inserida, error: insertError } = await supabase
@@ -313,32 +220,24 @@ export async function POST(request: NextRequest) {
     .select("id, cliente_id, titulo, descricao, tipo, prioridade, tarefa_id, status, created_at, updated_at, criado_por_id, origem")
     .single();
 
-  if (insertError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: insertError.message } },
-      { status: 500 }
-    );
-  }
+  if (insertError) return jsonError({ code: "DB_ERROR", message: insertError.message }, 500);
 
   const row = inserida as SolicitacaoRow;
-  return NextResponse.json(
+  return jsonSuccess(
     {
-      data: {
-        id: row.id,
-        clienteId: row.cliente_id,
-        titulo: row.titulo,
-        descricao: row.descricao,
-        tipo: row.tipo,
-        prioridade: row.prioridade,
-        tarefaId: row.tarefa_id,
-        status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        criadoPorId: row.criado_por_id,
-        origem: row.origem as OrigemSolicitacao,
-      },
-      error: null,
+      id: row.id,
+      clienteId: row.cliente_id,
+      titulo: row.titulo,
+      descricao: row.descricao,
+      tipo: row.tipo,
+      prioridade: row.prioridade,
+      tarefaId: row.tarefa_id,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      criadoPorId: row.criado_por_id,
+      origem: row.origem as OrigemSolicitacao,
     },
-    { status: 201 }
+    201
   );
 }

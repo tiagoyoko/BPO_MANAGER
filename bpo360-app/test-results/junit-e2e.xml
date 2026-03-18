@@ -1,0 +1,125 @@
+<testsuites id="" name="" tests="1" failures="1" skipped="0" errors="0" time="12.319015000000002">
+<testsuite name="example.spec.ts" timestamp="2026-03-16T11:58:53.681Z" hostname="chromium" tests="1" failures="1" skipped="0" time="1.709" errors="0">
+<testcase name="BPO360 smoke › home page renders" classname="example.spec.ts" time="1.709">
+<failure message="example.spec.ts:4:7 home page renders" type="FAILURE">
+<![CDATA[  [chromium] › example.spec.ts:4:7 › BPO360 smoke › home page renders ──────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/
+    Call log:
+      - navigating to "http://localhost:3000/", waiting until "load"
+
+
+      3 | test.describe('BPO360 smoke', () => {
+      4 |   test('home page renders', async ({ page }) => {
+    > 5 |     await page.goto('/');
+        |                ^
+      6 |
+      7 |     await expect(page).toHaveTitle(/BPO/i);
+      8 |
+        at /Users/tiagoyokoyama/BPO_MANAGER/bpo360-app/tests/e2e/example.spec.ts:5:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../test-results/example-BPO360-smoke-home-page-renders-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/
+    Call log:
+      - navigating to "http://localhost:3000/", waiting until "load"
+
+
+      3 | test.describe('BPO360 smoke', () => {
+      4 |   test('home page renders', async ({ page }) => {
+    > 5 |     await page.goto('/');
+        |                ^
+      6 |
+      7 |     await expect(page).toHaveTitle(/BPO/i);
+      8 |
+        at /Users/tiagoyokoyama/BPO_MANAGER/bpo360-app/tests/e2e/example.spec.ts:5:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/
+    Call log:
+      - navigating to "http://localhost:3000/", waiting until "load"
+
+
+      3 | test.describe('BPO360 smoke', () => {
+      4 |   test('home page renders', async ({ page }) => {
+    > 5 |     await page.goto('/');
+        |                ^
+      6 |
+      7 |     await expect(page).toHaveTitle(/BPO/i);
+      8 |
+        at /Users/tiagoyokoyama/BPO_MANAGER/bpo360-app/tests/e2e/example.spec.ts:5:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry2/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry2/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../test-results/example-BPO360-smoke-home-page-renders-chromium-retry2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium/video.webm]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium/trace.zip]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry1/test-failed-1.png]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry1/video.webm]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry1/trace.zip]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry2/test-failed-1.png]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry2/video.webm]]
+
+[[ATTACHMENT|example-BPO360-smoke-home-page-renders-chromium-retry2/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

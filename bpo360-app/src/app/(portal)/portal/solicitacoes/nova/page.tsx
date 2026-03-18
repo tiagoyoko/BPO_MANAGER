@@ -4,8 +4,6 @@
 import Link from "next/link";
 import { NovaSolicitacaoPortalForm } from "../_components/nova-solicitacao-portal-form";
 
-export const dynamic = "force-dynamic";
-
 export default function PortalNovaSolicitacaoPage() {
   return (
     <main className="container mx-auto px-4 py-8 max-w-xl">

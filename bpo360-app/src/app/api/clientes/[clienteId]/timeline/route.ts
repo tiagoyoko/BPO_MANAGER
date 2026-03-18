@@ -43,6 +43,16 @@ export type ComentarioRow = {
 
 const TIPOS_VALIDOS: TipoEvento[] = ["solicitacao_criada", "comentario"];
 
+/** Maps raw Supabase response to typed rows; documents the select() contract. */
+function toSolicitacaoRows(data: unknown): SolicitacaoRow[] {
+  return (Array.isArray(data) ? data : []) as SolicitacaoRow[];
+}
+
+/** Maps raw Supabase response to typed rows; documents the select() contract. */
+function toComentarioRows(data: unknown): ComentarioRow[] {
+  return (Array.isArray(data) ? data : []) as ComentarioRow[];
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ clienteId: string }> }
@@ -123,7 +133,7 @@ export async function GET(
       );
     }
 
-    for (const row of (solicitacoes ?? []) as unknown as SolicitacaoRow[]) {
+    for (const row of toSolicitacaoRows(solicitacoes)) {
       const autorTipo = row.origem === "cliente" ? "cliente" : "interno";
       eventos.push({
         id: `sol-${row.id}`,
@@ -138,7 +148,7 @@ export async function GET(
     }
 
     // Captura IDs para reutilizar na query de comentários (evita segunda roundtrip ao DB).
-    idssolicitacoes = (solicitacoes ?? []).map((r) => (r as unknown as SolicitacaoRow).id);
+    idssolicitacoes = toSolicitacaoRows(solicitacoes).map((r) => r.id);
   }
 
   // Buscar comentários de solicitações do cliente
@@ -165,7 +175,7 @@ export async function GET(
         );
       }
 
-      for (const row of (comentarios ?? []) as unknown as ComentarioRow[]) {
+      for (const row of toComentarioRows(comentarios)) {
         eventos.push({
           id: `com-${row.id}`,
           tipo: "comentario",

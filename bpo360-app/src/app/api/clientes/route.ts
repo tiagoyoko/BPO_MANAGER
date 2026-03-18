@@ -2,7 +2,7 @@
  * Route Handler: /api/clientes
  * Story 1.2: GET lista clientes do BPO | POST cria novo cliente
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { normalizarCnpj, validarFormatoCnpj } from "@/lib/domain/clientes/cnpj";
@@ -10,11 +10,11 @@ import {
   buscarClientePorCnpjEBpo,
   buscarUsuarioPorIdEBpo,
 } from "@/lib/domain/clientes/repository";
-import type { Cliente, ClienteRow, NovoClienteInput } from "@/lib/domain/clientes/types";
+import type { Cliente, ClienteRow } from "@/lib/domain/clientes/types";
 import { computarErpDetalhes, computarErpStatus } from "@/lib/domain/clientes/erp-status";
 import type { ErpStatusCliente } from "@/lib/domain/clientes/types";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { NovoClienteSchema } from "@/lib/api/schemas/clientes";
 
 // ─── GET /api/clientes ────────────────────────────────────────────────────────
 
@@ -23,16 +23,10 @@ const STATUS_VALIDOS = ["Ativo", "Em implantação", "Pausado", "Encerrado"] as 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
+    return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   }
   if (user.role === "cliente_final") {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
 
   const { searchParams } = new URL(request.url);
@@ -127,17 +121,11 @@ export async function GET(request: NextRequest) {
     .range(offset, offset + limit - 1);
 
   if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: error.message }, 500);
   }
 
   const clientes = (data ?? []).map(rowToClienteComErp);
-  return NextResponse.json({
-    data: { clientes, total: count ?? 0, page, limit },
-    error: null,
-  });
+  return jsonSuccess({ clientes, total: count ?? 0, page, limit });
 }
 
 // ─── POST /api/clientes ───────────────────────────────────────────────────────
@@ -145,63 +133,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
+    return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   }
   if (user.role === "cliente_final") {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
+    return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
   }
 
-  let body: NovoClienteInput;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, NovoClienteSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  // Validação de campos obrigatórios
   const { cnpj, razaoSocial, nomeFantasia, email } = body;
-  if (!cnpj || !razaoSocial || !nomeFantasia || !email) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "CAMPOS_OBRIGATORIOS",
-          message: "Os campos cnpj, razaoSocial, nomeFantasia e email são obrigatórios.",
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Validação de formato do e-mail
-  if (!EMAIL_REGEX.test(email.trim())) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: { code: "EMAIL_INVALIDO", message: "E-mail inválido. Verifique o formato e tente novamente." },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Validação de formato do CNPJ
   const cnpjNormalizado = normalizarCnpj(cnpj);
   if (!validarFormatoCnpj(cnpjNormalizado)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: { code: "CNPJ_INVALIDO", message: "CNPJ inválido. Verifique o formato e os dígitos verificadores." },
-      },
-      { status: 400 }
+    return jsonError(
+      { code: "CNPJ_INVALIDO", message: "CNPJ inválido. Verifique o formato e os dígitos verificadores." },
+      400
     );
   }
 
@@ -215,22 +162,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (responsavelError) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: responsavelError.message } },
-        { status: 500 }
-      );
+      return jsonError({ code: "DB_ERROR", message: responsavelError.message }, 500);
     }
 
     if (!responsavel) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "RESPONSAVEL_INVALIDO",
-            message: "responsavelInternoId deve pertencer ao mesmo BPO do usuário autenticado.",
-          },
-        },
-        { status: 400 }
+      return jsonError(
+        { code: "RESPONSAVEL_INVALIDO", message: "responsavelInternoId deve pertencer ao mesmo BPO do usuário autenticado." },
+        400
       );
     }
   }
@@ -243,22 +181,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (dupError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: dupError.message } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: dupError.message }, 500);
   }
 
   if (existente) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "CNPJ_DUPLICADO",
-          message: "Já existe um cliente com este CNPJ cadastrado.",
-        },
-      },
-      { status: 409 }
+    return jsonError(
+      { code: "CNPJ_DUPLICADO", message: "Já existe um cliente com este CNPJ cadastrado." },
+      409
     );
   }
 
@@ -281,13 +210,10 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (insertError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: insertError.message } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: insertError.message }, 500);
   }
 
-  return NextResponse.json({ data: rowToCliente(novoCliente), error: null }, { status: 201 });
+  return jsonSuccess(rowToCliente(novoCliente), 201);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

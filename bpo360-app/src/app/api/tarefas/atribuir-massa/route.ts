@@ -2,47 +2,26 @@
  * Story 2.5: POST /api/tarefas/atribuir-massa — atribuir responsável em massa.
  * AC 1, 2, 3, 4: guard admin/gestor; responsavelId mesmo BPO; falhas pontuais; histórico.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAssignMass } from "@/lib/auth/rbac";
-
-type Body = { tarefaIds?: string[]; responsavelId?: string };
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { AtribuirMassaSchema } from "@/lib/api/schemas/tarefas";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
   if (!canAssignMass(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Apenas gestor ou admin podem atribuir em massa." } },
-      { status: 403 }
+    return jsonError(
+      { code: "FORBIDDEN", message: "Apenas gestor ou admin podem atribuir em massa." },
+      403
     );
   }
 
-  let body: Body;
-  try {
-    body = (await request.json()) as Body;
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "Body JSON inválido." } },
-      { status: 400 }
-    );
-  }
-
-  const tarefaIds = Array.isArray(body.tarefaIds) ? body.tarefaIds.filter((id) => typeof id === "string") : [];
-  const responsavelId = typeof body.responsavelId === "string" ? body.responsavelId.trim() : "";
-
-  if (tarefaIds.length === 0 || !responsavelId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "tarefaIds e responsavelId obrigatórios." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, AtribuirMassaSchema);
+  if (!parsed.success) return parsed.response;
+  const { tarefaIds, responsavelId } = parsed.data;
 
   const supabase = await createClient();
 
@@ -53,23 +32,17 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (errResp || !responsavelRow) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "Responsável não encontrado." } },
-      { status: 400 }
-    );
+    return jsonError({ code: "BAD_REQUEST", message: "Responsável não encontrado." }, 400);
   }
 
   const resp = responsavelRow as { id: string; bpo_id: string; role: string };
   if (resp.bpo_id !== user.bpoId) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "Responsável deve ser do mesmo BPO." } },
-      { status: 400 }
-    );
+    return jsonError({ code: "BAD_REQUEST", message: "Responsável deve ser do mesmo BPO." }, 400);
   }
   if (!["operador_bpo", "gestor_bpo"].includes(resp.role)) {
-    return NextResponse.json(
-      { data: null, error: { code: "BAD_REQUEST", message: "Responsável deve ser operador ou gestor do BPO (não admin)." } },
-      { status: 400 }
+    return jsonError(
+      { code: "BAD_REQUEST", message: "Responsável deve ser operador ou gestor do BPO (não admin)." },
+      400
     );
   }
 
@@ -136,8 +109,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    data: { sucesso, falhas },
-    error: null,
-  });
+  return jsonSuccess({ sucesso, falhas });
 }

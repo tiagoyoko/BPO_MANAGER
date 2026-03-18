@@ -199,6 +199,11 @@ Permitir que o admin gerencie usuários internos (admin, gestor, operador) e usu
 **FRs cobertos:** RF-21, RF-22, RF-23.
 **Faseamento sugerido:** Primeiras stories = auth + papéis + RLS (não bloquear EP1). Depois = cofre de senhas (RF-23) e usuários de clientes (RF-22).
 
+### Epic 9: Modernização Visual e Design System do BPO360 *(novo)*
+Alinhar a interface atual do produto à especificação de UX e às direções visuais aprovadas, consolidando shell global, design tokens, componentes de domínio e refatoração das superfícies críticas para uma experiência mais clara, consistente e moderna.
+**UX-DRs cobertos:** UX-DR1, UX-DR2, UX-DR3, UX-DR4, UX-DR5, UX-DR6, UX-DR7, UX-DR8, UX-DR9, UX-DR10.
+**Base de referência:** `ux-design-specification.md`, `ux-design-directions.html`.
+
 ---
 
 ## Recomendações de implementação
@@ -886,3 +891,119 @@ So that **credenciais sensíveis fiquem criptografadas, mascaradas e com trilha 
 - **When** o usuário criar ou editar um segredo (nome, valor, opcionalmente vínculo a cliente),
 - **Then** o valor é armazenado criptografado em repouso; na listagem e visualização é exibido apenas mascarado (ex.: ****) com opção de revelar temporariamente com confirmação.
 - **And** é registrado quem visualizou/editou cada segredo e quando (auditoria); apenas papéis autorizados acessam o cofre.
+
+---
+
+### Epic 9: Modernização Visual e Design System do BPO360
+
+Alinhar a interface atual do produto à especificação de UX e às direções visuais aprovadas, consolidando shell global, design tokens, componentes de domínio e refatoração das superfícies críticas para uma experiência mais clara, consistente e moderna.
+**UX-DRs:** UX-DR1, UX-DR2, UX-DR3, UX-DR4, UX-DR5, UX-DR6, UX-DR7, UX-DR8, UX-DR9, UX-DR10.
+**Base:** `ux-design-specification.md`, `ux-design-directions.html`.
+
+#### Story 9.1: Implementar design tokens e fundação visual global
+
+As a **usuário do BPO360**,
+I want **que a aplicação use um sistema visual consistente de cores, tipografia, espaçamento e estados**,
+So that **a interface pareça coesa, moderna e previsível em todas as telas**.
+
+**Acceptance Criteria:**
+- **Given** a base atual de estilos globais e componentes UI,
+- **When** a fundação visual for implementada,
+- **Then** o projeto passa a expor tokens semânticos para cor, tipografia, spacing, radius, borda, sombra e estados principais, alinhados ao UX spec.
+- **And** os tokens substituem a base genérica atual sem quebrar contraste mínimo AA nas superfícies principais.
+
+#### Story 9.2: Criar AppShell para o backoffice BPO
+
+As a **gestor ou operador de BPO**,
+I want **navegar dentro de um shell persistente com sidebar, header contextual e área de ações**,
+So that **eu mantenha contexto e orientação ao mover entre Home, Clientes, Hoje e demais módulos**.
+
+**Acceptance Criteria:**
+- **Given** as rotas principais da área BPO,
+- **When** o AppShell for aplicado,
+- **Then** as páginas passam a compartilhar sidebar, header contextual, área principal consistente e indicação visual da seção ativa.
+- **And** o shell preserva acessibilidade por teclado, landmarks semânticos e comportamento responsivo para tablet.
+
+#### Story 9.3: Criar sinais operacionais e cards de insight
+
+As a **gestor ou operador de BPO**,
+I want **ver risco, sync, prioridade, SLA e KPIs usando a mesma linguagem visual**,
+So that **eu entenda estado e prioridade sem precisar reinterpretar cada tela**.
+
+**Acceptance Criteria:**
+- **Given** os estados operacionais e financeiros definidos no UX spec,
+- **When** os componentes `HealthSignal` e `KPI Insight Card` forem implementados,
+- **Then** status, prioridade, integração e indicadores passam a usar componentes semânticos padronizados.
+- **And** cada estado combina cor, texto e estrutura, sem depender apenas de cor para ser compreendido.
+
+#### Story 9.4: Refatorar a tela de Clientes para triagem de carteira
+
+As a **gestor de BPO**,
+I want **que a tela de clientes funcione como superfície de triagem de carteira, e não só como listagem cadastral**,
+So that **eu identifique rapidamente clientes críticos e entre no detalhe certo**.
+
+**Acceptance Criteria:**
+- **Given** a tela de clientes atual,
+- **When** a refatoração visual for aplicada,
+- **Then** a tela passa a destacar risco, integração, responsável, sinais financeiros e próxima ação de forma hierárquica.
+- **And** filtros, busca e navegação preservam contexto e levam ao detalhe mais útil do cliente.
+
+#### Story 9.5: Refatorar o painel Hoje para fila operacional priorizada
+
+As a **operador de BPO**,
+I want **que o painel Hoje me mostre uma fila clara e priorizada por cliente e tarefa**,
+So that **eu saiba imediatamente onde agir primeiro**.
+
+**Acceptance Criteria:**
+- **Given** a tela Hoje com tarefas agrupadas por cliente,
+- **When** a nova versão for aplicada,
+- **Then** o painel destaca prioridade, urgência, contexto do cliente e ação clara de entrar em foco.
+- **And** a leitura do dia acontece em poucos segundos, com baixa carga cognitiva.
+
+#### Story 9.6: Evoluir a Área de Trabalho para Focus Workspace
+
+As a **operador de BPO**,
+I want **executar o trabalho de um cliente em um workspace focado com tarefas, detalhe, contexto e comunicação integrados**,
+So that **eu trabalhe com menos alternância e mais sensação de progresso**.
+
+**Acceptance Criteria:**
+- **Given** a área de trabalho atual em colunas,
+- **When** ela for evoluída para o `Focus Workspace`,
+- **Then** a tela passa a ter hierarquia clara entre lista de tarefas, detalhe ativo e contexto complementar do cliente.
+- **And** seleção, avanço, feedback e conclusão de tarefa ocorrem com resposta visual imediata e consistente.
+
+#### Story 9.7: Padronizar feedback, estados vazios, erro e loading
+
+As a **usuário do sistema**,
+I want **receber feedback e ver estados vazios/erro/loading de forma consistente em todas as telas**,
+So that **eu entenda rapidamente o que aconteceu e qual o próximo passo**.
+
+**Acceptance Criteria:**
+- **Given** os padrões de UX definidos para feedback e recovery state,
+- **When** forem aplicados ao produto,
+- **Then** toasts, banners, empty states, no-results, loading e mensagens de erro usam a mesma gramática visual e textual.
+- **And** erros relevantes permanecem legíveis e acionáveis, com linguagem de negócio e orientação de recuperação.
+
+#### Story 9.8: Aplicar a nova linguagem visual ao login e portal do cliente
+
+As a **cliente final ou usuário autenticando no sistema**,
+I want **uma experiência visual mais clara, confiável e acolhedora no login e portal**,
+So that **eu perceba consistência com o produto sem herdar a densidade operacional do backoffice**.
+
+**Acceptance Criteria:**
+- **Given** as telas de login e portal,
+- **When** a nova linguagem visual for aplicada,
+- **Then** elas passam a usar a mesma fundação de tokens, componentes e hierarquia do produto, com menor densidade e maior apoio contextual.
+- **And** a experiência do portal continua distinta do backoffice, porém coerente com a identidade geral do BPO360.
+
+#### Story 9.9: Garantir responsividade e acessibilidade nas superfícies modernizadas
+
+As a **usuário do BPO360**,
+I want **que as telas modernizadas funcionem bem em desktop e tablet e mantenham padrões fortes de acessibilidade**,
+So that **a experiência continue legível, navegável e segura em diferentes contextos de uso**.
+
+**Acceptance Criteria:**
+- **Given** as superfícies modernizadas do backoffice e portal,
+- **When** forem validadas,
+- **Then** elas atendem ao alvo WCAG 2.1 AA nas áreas principais e se adaptam corretamente aos breakpoints definidos no UX spec.
+- **And** foco visível, navegação por teclado, contraste, labels, estados e layouts colapsados funcionam de forma consistente em desktop e tablet.

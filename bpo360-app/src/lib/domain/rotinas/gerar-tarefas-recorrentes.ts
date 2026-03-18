@@ -130,6 +130,7 @@ export async function gerarTarefasRecorrentes(
 
     for (let j = 0; j < checklist.length; j++) {
       const item = checklist[j];
+      if (!item) continue;
       const { error: errItem } = await supabase.from("tarefa_checklist_itens").insert({
         tarefa_id: (tarefa as { id: string }).id,
         titulo: item.titulo,

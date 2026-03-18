@@ -290,7 +290,7 @@ describe("PATCH /api/tarefas/[tarefaId]", () => {
   it("retorna 200 e atualiza status da tarefa", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(GESTOR);
     const updated = { ...TAREFA_ROW, status: "em_andamento" };
-    const supabase = createSupabaseForPatch(updated);
+    const supabase = createSupabaseForPatch({ updated });
     vi.mocked(createClient).mockResolvedValue(supabase as never);
 
     const res = await PATCH(

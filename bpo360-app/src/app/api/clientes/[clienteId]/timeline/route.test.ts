@@ -34,6 +34,71 @@ function reqGet(clienteId = "cliente-1", params = ""): NextRequest {
   );
 }
 
+function _mockSupabaseBuilder(overrides: {
+  cliente?: object | null;
+  clienteError?: object | null;
+  solicitacoes?: object[];
+  solError?: object | null;
+  solicitacaoIds?: string[];
+  comentarios?: object[];
+  comError?: object | null;
+}) {
+  const {
+    cliente = { id: "cliente-1" },
+    clienteError = null,
+    solicitacoes = [],
+    solError = null,
+    solicitacaoIds: _solicitacaoIds = [],
+    comentarios = [],
+    comError = null,
+  } = overrides;
+
+  const supabaseMock = {
+    from: vi.fn((table: string) => {
+      if (table === "clientes") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: cliente, error: clienteError }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "solicitacoes") {
+        // Usado tanto para buscar solicitações da timeline quanto para sub-query de ids
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: solicitacoes, error: solError }),
+                // para sub-query de ids (sem order)
+                then: undefined as unknown as undefined,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "comentarios") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: comentarios, error: comError }),
+              }),
+            }),
+          }),
+        };
+      }
+      return { select: vi.fn() };
+    }),
+  };
+
+  return supabaseMock;
+}
+
+
 describe("GET /api/clientes/[clienteId]/timeline", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser).mockReset();
@@ -85,6 +150,7 @@ describe("GET /api/clientes/[clienteId]/timeline", () => {
     vi.mocked(getCurrentUser).mockResolvedValue(USUARIO_MOCK);
 
     // Supabase mock complexo para suportar múltiplas chamadas
+    let _callCount = 0;
     const supabaseMock = {
       from: vi.fn((table: string) => {
         if (table === "clientes") {
@@ -100,6 +166,7 @@ describe("GET /api/clientes/[clienteId]/timeline", () => {
         }
         // solicitacoes: primeira chamada retorna lista para timeline, segunda para sub-query ids
         if (table === "solicitacoes") {
+          _callCount++;
           return {
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({

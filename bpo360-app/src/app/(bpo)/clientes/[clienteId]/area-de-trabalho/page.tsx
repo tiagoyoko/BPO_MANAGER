@@ -8,8 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 import { buscarClientePorIdEBpo } from "@/lib/domain/clientes/repository";
 import { AreaDeTrabalhoClient } from "./_components/area-de-trabalho-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function AreaDeTrabalhoPage({
   params,
 }: {

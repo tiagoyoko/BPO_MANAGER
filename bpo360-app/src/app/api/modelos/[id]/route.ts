@@ -6,14 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
-import {
-  isPeriodicidadeValida,
-  type AtualizarRotinaModeloInput,
-  type RotinaModelo,
-  type RotinaModeloRow,
-  type RotinaModeloChecklistItemRow,
-  type NovoItemChecklistInput,
+import type {
+  RotinaModelo,
+  RotinaModeloRow,
+  RotinaModeloChecklistItemRow,
+  NovoItemChecklistInput,
 } from "@/lib/domain/rotinas/types";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { AtualizarRotinaModeloSchema } from "@/lib/api/schemas/modelos";
 
 async function getModeloComItens(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -64,34 +64,16 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { id } = await context.params;
   const supabase = await createClient();
   const { modelo, itens } = await getModeloComItens(supabase, id, user.bpoId);
 
-  if (!modelo) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Modelo não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (!modelo) return jsonError({ code: "NOT_FOUND", message: "Modelo não encontrado." }, 404);
 
-  return NextResponse.json({
-    data: toRotinaModelo(modelo, itens),
-    error: null,
-  });
+  return jsonSuccess(toRotinaModelo(modelo, itens));
 }
 
 // ─── PATCH /api/modelos/[id] ───────────────────────────────────────────────────
@@ -101,61 +83,17 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { id } = await context.params;
-  let body: AtualizarRotinaModeloInput;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
-
-  if (body.periodicidade !== undefined && !isPeriodicidadeValida(body.periodicidade)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "PERIODICIDADE_INVALIDA",
-          message: "periodicidade deve ser uma de: diaria, semanal, mensal, custom.",
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  if (body.nome !== undefined && typeof body.nome === "string" && !body.nome.trim()) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: { code: "CAMPOS_OBRIGATORIOS", message: "O campo nome é obrigatório." },
-      },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, AtualizarRotinaModeloSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const supabase = await createClient();
   const { modelo: existente } = await getModeloComItens(supabase, id, user.bpoId);
-  if (!existente) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Modelo não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (!existente) return jsonError({ code: "NOT_FOUND", message: "Modelo não encontrado." }, 404);
 
   const updates: Partial<RotinaModeloRow> = {};
   if (body.nome !== undefined) updates.nome = body.nome.trim();
@@ -169,12 +107,7 @@ export async function PATCH(
       .update(updates)
       .eq("id", id)
       .eq("bpo_id", user.bpoId);
-    if (updateError) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: updateError.message } },
-        { status: 500 }
-      );
-    }
+    if (updateError) return jsonError({ code: "DB_ERROR", message: updateError.message }, 500);
   }
 
   if (body.itensChecklist !== undefined) {
@@ -186,15 +119,9 @@ export async function PATCH(
       ordem: index,
     }));
     if (validados.some((i) => !i.titulo)) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            code: "CHECKLIST_INVALIDO",
-            message: "Cada item do checklist deve ter um título não vazio.",
-          },
-        },
-        { status: 400 }
+      return jsonError(
+        { code: "CHECKLIST_INVALIDO", message: "Cada item do checklist deve ter um título não vazio." },
+        400
       );
     }
 
@@ -202,12 +129,7 @@ export async function PATCH(
       .from("rotina_modelo_checklist_itens")
       .delete()
       .eq("rotina_modelo_id", id);
-    if (delError) {
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: delError.message } },
-        { status: 500 }
-      );
-    }
+    if (delError) return jsonError({ code: "DB_ERROR", message: delError.message }, 500);
 
     if (validados.length > 0) {
       const itensRows = validados.map((item) => ({
@@ -220,12 +142,7 @@ export async function PATCH(
       const { error: insertError } = await supabase
         .from("rotina_modelo_checklist_itens")
         .insert(itensRows);
-      if (insertError) {
-        return NextResponse.json(
-          { data: null, error: { code: "DB_ERROR", message: insertError.message } },
-          { status: 500 }
-        );
-      }
+      if (insertError) return jsonError({ code: "DB_ERROR", message: insertError.message }, 500);
     }
   }
 
@@ -235,16 +152,10 @@ export async function PATCH(
     user.bpoId
   );
   if (!atualizado) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: "Modelo não encontrado após atualização." } },
-      { status: 500 }
-    );
+    return jsonError({ code: "DB_ERROR", message: "Modelo não encontrado após atualização." }, 500);
   }
 
-  return NextResponse.json({
-    data: toRotinaModelo(atualizado, itensAtualizados),
-    error: null,
-  });
+  return jsonSuccess(toRotinaModelo(atualizado, itensAtualizados));
 }
 
 // ─── DELETE /api/modelos/[id] ───────────────────────────────────────────────────
@@ -254,18 +165,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const { id } = await context.params;
   const supabase = await createClient();
@@ -276,12 +177,7 @@ export async function DELETE(
     .eq("bpo_id", user.bpoId)
     .maybeSingle();
 
-  if (!modelo) {
-    return NextResponse.json(
-      { data: null, error: { code: "NOT_FOUND", message: "Modelo não encontrado." } },
-      { status: 404 }
-    );
-  }
+  if (!modelo) return jsonError({ code: "NOT_FOUND", message: "Modelo não encontrado." }, 404);
 
   const { error } = await supabase
     .from("rotinas_modelo")
@@ -289,12 +185,7 @@ export async function DELETE(
     .eq("id", id)
     .eq("bpo_id", user.bpoId);
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
 
   return new NextResponse(null, { status: 204 });
 }

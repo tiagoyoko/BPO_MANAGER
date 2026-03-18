@@ -6,8 +6,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SolicitacoesPageClient } from "./_components/solicitacoes-page-client";
 
-export const dynamic = "force-dynamic";
-
 type ClienteOption = { id: string; nomeFantasia: string };
 
 export default async function SolicitacoesPage() {

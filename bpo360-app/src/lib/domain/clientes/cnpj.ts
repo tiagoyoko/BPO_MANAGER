@@ -30,7 +30,7 @@ function verificarDigitos(digits: string): boolean {
   const calc = (slice: string, weights: number[]): number => {
     const sum = slice
       .split("")
-      .reduce((acc, d, i) => acc + parseInt(d, 10) * weights[i], 0);
+      .reduce((acc, d, i) => acc + parseInt(d, 10) * (weights[i] ?? 0), 0);
     const remainder = sum % 11;
     return remainder < 2 ? 0 : 11 - remainder;
   };
@@ -39,8 +39,10 @@ function verificarDigitos(digits: string): boolean {
   const w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 
   const d1 = calc(digits.slice(0, 12), w1);
-  if (d1 !== parseInt(digits[12], 10)) return false;
+  const digit12 = digits[12];
+  if (digit12 === undefined || d1 !== parseInt(digit12, 10)) return false;
 
   const d2 = calc(digits.slice(0, 13), w2);
-  return d2 === parseInt(digits[13], 10);
+  const digit13 = digits[13];
+  return digit13 !== undefined && d2 === parseInt(digit13, 10);
 }

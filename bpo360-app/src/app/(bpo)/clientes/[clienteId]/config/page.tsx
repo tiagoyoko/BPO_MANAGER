@@ -14,8 +14,6 @@ import { decrypt } from "@/lib/security/crypto";
 import { ErpConfigClient } from "./_components/erp-config-client";
 import { F360TokenForm } from "./_components/f360-token-form";
 
-export const dynamic = "force-dynamic";
-
 export default async function ClienteConfigPage({
   params,
 }: {

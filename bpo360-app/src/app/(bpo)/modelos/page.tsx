@@ -8,8 +8,6 @@ import { canAccessModelos } from "@/lib/auth/rbac";
 import { redirect } from "next/navigation";
 import { ModelosPageClient } from "./_components/modelos-page-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function ModelosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?error=no-profile");

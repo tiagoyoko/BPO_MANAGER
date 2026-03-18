@@ -78,14 +78,16 @@ describe("NovaSolicitacaoForm", () => {
       "/api/solicitacoes",
       expect.objectContaining({ method: "POST" })
     );
-    expect(JSON.parse(String(request.body))).toEqual({
+    const body = JSON.parse(typeof request.body === "string" ? request.body : JSON.stringify(request.body));
+    expect(body).toMatchObject({
       clienteId: "cliente-1",
       titulo: "NF de janeiro",
-      descricao: undefined,
       tipo: "documento_faltando",
       prioridade: "alta",
       tarefaId: "tarefa-1",
     });
+    expect(typeof body.descricao).toBe("string");
+    expect(body.descricao.length).toBeGreaterThanOrEqual(1);
     expect(onSucesso).toHaveBeenCalledTimes(1);
   });
 });

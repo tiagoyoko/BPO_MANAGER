@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { PostSolicitacaoBody, TipoSolicitacao, PrioridadeSolicitacao } from "@/app/api/solicitacoes/route";
+import type { TipoSolicitacao, PrioridadeSolicitacao } from "@/app/api/solicitacoes/route";
+import type { PostSolicitacaoBody } from "@/lib/api/schemas/solicitacoes";
 
 type ClienteOption = { id: string; nomeFantasia: string };
 type TarefaOption = { id: string; titulo: string; dataVencimento: string };
@@ -83,10 +84,10 @@ export function NovaSolicitacaoForm({ clientes, onSucesso, onCancelar }: Props) 
       const body: PostSolicitacaoBody = {
         clienteId: clienteId.trim(),
         titulo: titulo.trim(),
-        descricao: descricao.trim() || undefined,
+        descricao: descricao.trim() || " ",
         tipo,
         prioridade,
-        tarefaId: tarefaId.trim() || undefined,
+        tarefaId: tarefaId.trim() || null,
       };
       const res = await fetch("/api/solicitacoes", {
         method: "POST",

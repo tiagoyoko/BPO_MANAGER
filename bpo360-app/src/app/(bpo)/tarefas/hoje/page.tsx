@@ -5,8 +5,6 @@ import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { redirect } from "next/navigation";
 import { TarefasHojeClient } from "./_components/tarefas-hoje-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function TarefasHojePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?error=no-profile");

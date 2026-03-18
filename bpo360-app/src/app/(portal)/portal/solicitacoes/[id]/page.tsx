@@ -6,8 +6,6 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DetalheSolicitacaoPortal } from "./_components/detalhe-solicitacao-portal";
 
-export const dynamic = "force-dynamic";
-
 type Props = { params: Promise<{ id: string }> };
 
 export default async function PortalSolicitacaoDetalhePage({ params }: Props) {

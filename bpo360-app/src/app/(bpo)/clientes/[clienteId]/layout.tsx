@@ -8,8 +8,6 @@ import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { redirect, notFound } from "next/navigation";
 import { buscarClientePorIdEBpo } from "@/lib/domain/clientes/repository";
 
-export const dynamic = "force-dynamic";
-
 export default async function ClienteLayout({
   children,
   params,

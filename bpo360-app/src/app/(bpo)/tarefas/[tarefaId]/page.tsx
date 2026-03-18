@@ -6,8 +6,6 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TarefaDetalheClient } from "./_components/tarefa-detalhe-client";
 
-export const dynamic = "force-dynamic";
-
 export default async function TarefaDetalhePage({
   params,
 }: {

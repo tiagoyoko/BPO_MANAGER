@@ -2,17 +2,17 @@
  * Route Handler: /api/modelos
  * Story 2.1: GET lista modelos do BPO | POST cria novo modelo de rotina com checklist.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { canAccessModelos } from "@/lib/auth/rbac";
-import {
-  isPeriodicidadeValida,
-  type NovoRotinaModeloInput,
-  type RotinaModeloResumo,
-  type RotinaModeloRow,
-  type RotinaModeloChecklistItemRow,
+import type {
+  RotinaModeloResumo,
+  RotinaModeloRow,
+  RotinaModeloChecklistItemRow,
 } from "@/lib/domain/rotinas/types";
+import { jsonSuccess, jsonError, parseBody } from "@/types/api";
+import { NovoRotinaModeloSchema } from "@/lib/api/schemas/modelos";
 type RotinaModeloListRow = {
   id: string;
   nome: string;
@@ -26,18 +26,8 @@ type RotinaModeloListRow = {
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
   const supabase = await createClient();
   const { data: rows, error } = await supabase
@@ -46,12 +36,7 @@ export async function GET() {
     .eq("bpo_id", user.bpoId)
     .order("nome", { ascending: true });
 
-  if (error) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: error.message } },
-      { status: 500 }
-    );
-  }
+  if (error) return jsonError({ code: "DB_ERROR", message: error.message }, 500);
 
   const ids = ((rows ?? []) as RotinaModeloListRow[]).map((r) => r.id);
   const contagemItens: Record<string, number> = {};
@@ -76,80 +61,28 @@ export async function GET() {
     criadoEm: r.created_at,
   }));
 
-  return NextResponse.json({ data: { modelos }, error: null });
+  return jsonSuccess({ modelos });
 }
 
 // ─── POST /api/modelos ────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json(
-      { data: null, error: { code: "UNAUTHORIZED", message: "Não autenticado." } },
-      { status: 401 }
-    );
-  }
-  if (!canAccessModelos(user)) {
-    return NextResponse.json(
-      { data: null, error: { code: "FORBIDDEN", message: "Acesso negado." } },
-      { status: 403 }
-    );
-  }
+  if (!user) return jsonError({ code: "UNAUTHORIZED", message: "Não autenticado." }, 401);
+  if (!canAccessModelos(user)) return jsonError({ code: "FORBIDDEN", message: "Acesso negado." }, 403);
 
-  let body: NovoRotinaModeloInput;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { data: null, error: { code: "INVALID_JSON", message: "Corpo da requisição inválido." } },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(request, NovoRotinaModeloSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  const nome = typeof body.nome === "string" ? body.nome.trim() : "";
-  if (!nome) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: { code: "CAMPOS_OBRIGATORIOS", message: "O campo nome é obrigatório." },
-      },
-      { status: 400 }
-    );
-  }
-
-  if (!isPeriodicidadeValida(body.periodicidade)) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "PERIODICIDADE_INVALIDA",
-          message: "periodicidade deve ser uma de: diaria, semanal, mensal, custom.",
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  const itensChecklist = Array.isArray(body.itensChecklist) ? body.itensChecklist : [];
+  const nome = body.nome.trim();
+  const itensChecklist = body.itensChecklist;
   const itensValidados = itensChecklist.map((item, index) => ({
-    titulo: typeof item.titulo === "string" ? item.titulo.trim() : "",
+    titulo: item.titulo.trim(),
     descricao: item.descricao != null ? String(item.descricao).trim() || null : null,
     obrigatorio: item.obrigatorio !== false,
     ordem: index,
   }));
-  const invalidos = itensValidados.filter((i) => !i.titulo);
-  if (invalidos.length > 0) {
-    return NextResponse.json(
-      {
-        data: null,
-        error: {
-          code: "CHECKLIST_INVALIDO",
-          message: "Cada item do checklist deve ter um título não vazio.",
-        },
-      },
-      { status: 400 }
-    );
-  }
 
   const supabase = await createClient();
   const { data: modelo, error: insertModeloError } = await supabase
@@ -165,12 +98,7 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (insertModeloError) {
-    return NextResponse.json(
-      { data: null, error: { code: "DB_ERROR", message: insertModeloError.message } },
-      { status: 500 }
-    );
-  }
+  if (insertModeloError) return jsonError({ code: "DB_ERROR", message: insertModeloError.message }, 500);
 
   const modeloRow = modelo as RotinaModeloRow;
   if (itensValidados.length > 0) {
@@ -187,10 +115,7 @@ export async function POST(request: NextRequest) {
 
     if (insertItensError) {
       await supabase.from("rotinas_modelo").delete().eq("id", modeloRow.id);
-      return NextResponse.json(
-        { data: null, error: { code: "DB_ERROR", message: insertItensError.message } },
-        { status: 500 }
-      );
+      return jsonError({ code: "DB_ERROR", message: insertItensError.message }, 500);
     }
   }
 
@@ -207,19 +132,16 @@ export async function POST(request: NextRequest) {
     ordem: row.ordem,
   }));
 
-  return NextResponse.json(
+  return jsonSuccess(
     {
-      data: {
-        id: modeloRow.id,
-        nome: modeloRow.nome,
-        descricao: modeloRow.descricao ?? null,
-        periodicidade: modeloRow.periodicidade,
-        tipoServico: modeloRow.tipo_servico ?? null,
-        itensChecklist: itens,
-        criadoEm: modeloRow.created_at,
-      },
-      error: null,
+      id: modeloRow.id,
+      nome: modeloRow.nome,
+      descricao: modeloRow.descricao ?? null,
+      periodicidade: modeloRow.periodicidade,
+      tipoServico: modeloRow.tipo_servico ?? null,
+      itensChecklist: itens,
+      criadoEm: modeloRow.created_at,
     },
-    { status: 201 }
+    201
   );
 }

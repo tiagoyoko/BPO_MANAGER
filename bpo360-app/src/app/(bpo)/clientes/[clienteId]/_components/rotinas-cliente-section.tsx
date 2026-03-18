@@ -325,7 +325,7 @@ function BulkActionModal({
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="baixa">Baixa</option>
-                <option value="media">Média</option>
+                <option value="media">{PRIORIDADE_LABEL.media}</option>
                 <option value="alta">Alta</option>
                 <option value="urgente">Urgente</option>
               </select>
@@ -546,7 +546,7 @@ function AdicionarRotinaModal({ clienteId, modelos, usuarios, onClose, onSuccess
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="baixa">Baixa</option>
-              <option value="media">Média</option>
+              <option value="media">{PRIORIDADE_LABEL.media}</option>
               <option value="alta">Alta</option>
               <option value="urgente">Urgente</option>
             </select>

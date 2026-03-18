@@ -98,6 +98,13 @@ If you wish to just develop locally and not deploy to Vercel, [follow the steps 
 
 > Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
 
+## Toolchain (pnpm e Prettier)
+
+Este projeto usa **pnpm** como gerenciador de pacotes e **Prettier** para formatação de código.
+
+- **Instalação de dependências:** use `pnpm install` (ou ative [Corepack](https://nodejs.org/api/corepack.html) com `corepack enable` se ainda não tiver pnpm).
+- **Formatação:** `pnpm run format` formata o código; `pnpm run format:check` verifica sem alterar arquivos. A config do Prettier está em `.prettierrc.json` e o ESLint está integrado com `eslint-config-prettier` para evitar conflito de regras.
+
 ## BPO360 – Primeiro BPO e usuário admin (Story 8.1)
 
 Para ambiente local, é necessário ter ao menos um tenant (BPO) e um usuário com perfil em `usuarios` para acessar a área BPO.
