@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-03-13"
-last_updated: "2026-03-15"  # story 1-8 em review
+last_updated: "2026-03-17"  # story 9-1 voltou para in-progress após code review
 project: BPO_MANAGER
 project_key: NOKEY
 tracking_system: file-system
@@ -119,3 +119,7 @@ development_status:
   8-4a-cofre-backend-segredos-criptografados-e-auditoria: ready-for-dev
   8-4b-cofre-ui-listagem-criar-editar-revelar: backlog
   epic-8-retrospective: optional
+
+  epic-9: in-progress
+  9-1-design-tokens-e-fundacao-visual-global: done
+  epic-9-retrospective: optional
